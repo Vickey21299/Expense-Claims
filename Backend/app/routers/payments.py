@@ -12,12 +12,10 @@ from uuid import UUID
 from fastapi import APIRouter, HTTPException, Query
 
 from app.core.database import supabase
-from app.core.logging import get_logger
 from app.models.payments import PaymentCreate, PaymentOut, PaymentListOut
 from app.models.enums import ClaimStatus
 
 router = APIRouter(prefix="/payments", tags=["Payments"])
-logger = get_logger(__name__)
 
 
 @router.get(

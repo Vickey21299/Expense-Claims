@@ -2,11 +2,11 @@
 app/core/database.py
 Supabase client singleton — import `supabase` wherever DB access is needed.
 """
+import logging
 from supabase import create_client, Client
 from app.core.config import settings
-from app.core.logging import get_logger
 
-logger = get_logger(__name__)
+logger = logging.getLogger(__name__)
 
 _client: Client | None = None
 
@@ -20,7 +20,7 @@ def get_supabase() -> Client:
                 "VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY must be set in .env"
             )
         _client = create_client(settings.SUPABASE_URL, settings.SUPABASE_KEY)
-        logger.info("Supabase client initialised", extra={"url": settings.SUPABASE_URL})
+        logger.info("Supabase client initialised successfully")
     return _client
 
 

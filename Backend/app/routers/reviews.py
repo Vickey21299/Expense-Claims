@@ -18,7 +18,6 @@ from uuid import UUID
 from fastapi import APIRouter, HTTPException, Query
 
 from app.core.database import supabase
-from app.core.logging import get_logger
 from app.models.reviews import (
     ManagerReviewCreate, ManagerReviewOut,
     FinanceReviewCreate, FinanceReviewOut,
@@ -27,7 +26,6 @@ from app.models.claims import ClaimListOut, ClaimOut
 from app.models.enums import ClaimStatus, FinanceDecision
 
 router = APIRouter(tags=["Reviews"])
-logger = get_logger(__name__)
 
 MANAGER_REVIEWABLE = {
     ClaimStatus.SUBMITTED.value,

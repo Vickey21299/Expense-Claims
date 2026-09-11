@@ -2,12 +2,12 @@
 app/routers/health.py
 Liveness and database connectivity checks.
 """
+import logging
 from fastapi import APIRouter, HTTPException
 from app.core.database import supabase
-from app.core.logging import get_logger
 
 router = APIRouter(prefix="/health", tags=["Health"])
-logger = get_logger(__name__)
+logger = logging.getLogger(__name__)
 
 
 @router.get(
@@ -28,7 +28,7 @@ def db_health_check():
     try:
         response = supabase.table("claims").select("id", count="exact").limit(1).execute()
         count = response.count if response.count is not None else len(response.data)
-        logger.info("DB health check passed", extra={"claims_count": count})
+        logger.info(f"DB health check passed (claims count: {count})")
         return {
             "status": "ok",
             "database": "connected",

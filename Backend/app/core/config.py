@@ -30,7 +30,6 @@ class Settings:
 
     # Logging
     LOG_LEVEL: str = os.environ.get("LOG_LEVEL", "INFO")
-    LOG_FORMAT: str = os.environ.get("LOG_FORMAT", "json")  # 'json' or 'text'
 
 
 settings = Settings()
