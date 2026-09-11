@@ -1,0 +1,9 @@
+/* Global reset — design tokens are in App.css */
+/* This file is intentionally minimal; all tokens live in App.css */
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+}
