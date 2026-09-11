@@ -1,43 +1,80 @@
-import os
-from fastapi import FastAPI, HTTPException
+"""
+main.py — Expense Claims API
+FastAPI entry point: registers all routers, middleware, and lifecycle hooks.
+
+Run:  uvicorn main:app --reload --port 8000
+Docs: http://localhost:8000/docs
+"""
+import logging
+from contextlib import asynccontextmanager
+
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from supabase import create_client, Client
-from dotenv import load_dotenv
 
-load_dotenv()
+from app.core.config import settings
+from app.core.logging import RequestLoggingMiddleware, get_logger
+from app.routers import health, users, claims, reviews, payments
 
-app = FastAPI()
+logger = get_logger(__name__)
 
-# Enable CORS for the React frontend
+
+# ---------------------------------------------------------------------------
+# Lifespan — startup / shutdown hooks
+# ---------------------------------------------------------------------------
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    logger.info(
+        "Expense Claims API starting",
+        extra={"version": settings.APP_VERSION, "supabase_url": settings.SUPABASE_URL},
+    )
+    yield
+    logger.info("Expense Claims API shutting down")
+
+
+# ---------------------------------------------------------------------------
+# App instance
+# ---------------------------------------------------------------------------
+app = FastAPI(
+    title=settings.APP_TITLE,
+    version=settings.APP_VERSION,
+    description=settings.APP_DESCRIPTION,
+    lifespan=lifespan,
+    docs_url="/docs",
+    redoc_url="/redoc",
+    openapi_url="/openapi.json",
+)
+
+# ---------------------------------------------------------------------------
+# Middleware
+# ---------------------------------------------------------------------------
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5174"],  # Vite default port
+    allow_origins=settings.CORS_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-url: str = os.environ.get("VITE_SUPABASE_URL")
-key: str = os.environ.get("VITE_SUPABASE_ANON_KEY")
+app.add_middleware(RequestLoggingMiddleware)
 
-if not url or not key:
-    raise ValueError("Supabase URL and Key must be set in .env")
+# ---------------------------------------------------------------------------
+# Routers
+# ---------------------------------------------------------------------------
+API_PREFIX = "/api/v1"
 
-supabase: Client = create_client(url, key)
+app.include_router(health.router,   prefix=API_PREFIX)
+app.include_router(users.router,    prefix=API_PREFIX)
+app.include_router(claims.router,   prefix=API_PREFIX)
+app.include_router(reviews.router,  prefix=API_PREFIX)
+app.include_router(payments.router, prefix=API_PREFIX)
 
-@app.get("/")
-def read_root():
-    return {"message": "Expense Claims API is running"}
-
-@app.get("/api/test-db")
-def test_db_connection():
-    try:
-        # Fetch up to 5 claims from the database to test connection
-        response = supabase.table("claims").select("*").limit(5).execute()
-        return {
-            "status": "success",
-            "message": "Successfully connected to Supabase Database via FastAPI!",
-            "data": response.data
-        }
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+# Root redirect → docs
+@app.get("/", include_in_schema=False)
+def root():
+    return {
+        "service": "Expense Claims API",
+        "version": settings.APP_VERSION,
+        "docs": "/docs",
+        "health": "/api/v1/health",
+        "db_health": "/api/v1/health/db",
+    }
