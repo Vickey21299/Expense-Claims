@@ -190,33 +190,75 @@ erDiagram
 
 ---
 
-## 4. Claim Lifecycle & State Machine
+## 4. Claim Lifecycle & State Pipeline
+
+### 4.1 Visual Lifecycle Flow
 
 ```mermaid
-stateDiagram-v2
-    [*] --> DRAFT : User creates claim
-    DRAFT --> SUBMITTED : User submits claim
-    DRAFT --> [*] : Deleted
+flowchart LR
+    %% Pipeline Stages
+    subgraph Stage1 ["1. Creation"]
+        Draft["📝 DRAFT"]
+    end
 
-    SUBMITTED --> UNDER_REVIEW : Manager opens / begins review
-    SUBMITTED --> FLAGGED : Auto-checks or policy flags claim
-    SUBMITTED --> APPROVED : Manager direct approval
-    SUBMITTED --> REJECTED : Manager rejects
+    subgraph Stage2 ["2. Submission & Validation"]
+        Submitted["📨 SUBMITTED"]
+        Flagged["⚠️ FLAGGED"]
+    end
 
-    UNDER_REVIEW --> FLAGGED : Manager flags issues
-    UNDER_REVIEW --> APPROVED : Manager approves
-    UNDER_REVIEW --> REJECTED : Manager rejects
+    subgraph Stage3 ["3. Manager Review"]
+        UnderReview["⏳ UNDER_REVIEW"]
+        Approved["✅ APPROVED"]
+    end
 
-    FLAGGED --> APPROVED : Issues resolved & approved
-    FLAGGED --> REJECTED : Rejected after review
+    subgraph Stage4 ["4. Finance & Settlement"]
+        Ready["🏦 READY_FOR_PAYMENT"]
+        Paid["🎉 PAID<br/><i>(Terminal)</i>"]
+    end
 
-    APPROVED --> READY_FOR_PAYMENT : Finance clears claim
-    APPROVED --> REJECTED : Finance rejects claim
+    subgraph Stage5 ["Terminal Exit"]
+        Rejected["🚫 REJECTED<br/><i>(Terminal)</i>"]
+    end
 
-    READY_FOR_PAYMENT --> PAID : Payment recorded
-    PAID --> [*] : Terminal State
-    REJECTED --> [*] : Terminal State
+    %% Primary Progression Flow
+    Draft -->|Employee Submits| Submitted
+    Submitted -->|Policy Alert| Flagged
+    Submitted -->|Review Starts| UnderReview
+    Flagged -->|Review & Clarify| UnderReview
+    
+    Submitted -->|Direct Approve| Approved
+    UnderReview -->|Manager Approves| Approved
+    Flagged -->|Manager Approves| Approved
+
+    Approved -->|Finance Clears| Ready
+    Ready -->|Payment Settled| Paid
+
+    %% Rejection Routes
+    Submitted -.->|Reject| Rejected
+    UnderReview -.->|Reject| Rejected
+    Flagged -.->|Reject| Rejected
+    Approved -.->|Finance Reject| Rejected
 ```
+
+### 4.2 State Transition Matrix
+
+| Current State | Target State | Trigger / Action | Allowed Actor | Condition / Notes |
+|---|---|---|---|---|
+| — | **`DRAFT`** | Create claim draft | Staff | Claim initialized with receipts / items |
+| **`DRAFT`** | **`SUBMITTED`** | Submit claim | Staff | All required fields & receipts attached |
+| **`DRAFT`** | *Deleted* | Delete draft | Staff | Draft permanently deleted |
+| **`SUBMITTED`** | **`UNDER_REVIEW`** | Open / start review | Manager | Manager begins evaluating claim |
+| **`SUBMITTED`** | **`FLAGGED`** | Auto policy check / manual flag | System / Manager | Anomaly, duplicate, or policy limit flag |
+| **`SUBMITTED`** | **`APPROVED`** | Fast-track approval | Manager | Direct approval without detailed queue |
+| **`SUBMITTED`** | **`REJECTED`** | Reject claim | Manager | Reason required in review comment |
+| **`UNDER_REVIEW`**| **`FLAGGED`** | Flag suspicious items | Manager | Duplicate match or policy exception found |
+| **`UNDER_REVIEW`**| **`APPROVED`** | Approve claim | Manager | Moves claim to Finance queue |
+| **`UNDER_REVIEW`**| **`REJECTED`** | Reject claim | Manager | Rejection comment recorded in history |
+| **`FLAGGED`** | **`APPROVED`** | Override / approve | Manager | Manager acknowledges flag and approves |
+| **`FLAGGED`** | **`REJECTED`** | Reject flagged claim | Manager | Rejection comment recorded |
+| **`APPROVED`** | **`READY_FOR_PAYMENT`** | Finance clearance | Finance | Finance verifies invoices & budget allocation |
+| **`APPROVED`** | **`REJECTED`** | Finance rejection | Finance | Non-compliant tax or missing compliance docs |
+| **`READY_FOR_PAYMENT`** | **`PAID`** | Record disbursement | Finance | Payment reference generated (Terminal State) |
 
 ---
 
