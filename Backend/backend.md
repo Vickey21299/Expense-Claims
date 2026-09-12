@@ -33,6 +33,7 @@
 | `app/services/storage.py` | Supabase Storage File Handler | 🟢 **CORE SERVICE** | Working on file validation, mime types, checksums |
 | `app/services/verification/*`| Verification Engine & Forensic Analysis | 🟢 **CORE SERVICE** | Working on candidate retrieval, similarity, LLM check |
 | `app/services/payment/*` | Payment Service & Mock Gateway Provider | 🟢 **CORE SERVICE** | Working on transaction generation & payouts |
+| `product.md` | Product Specs, Rules, Limits & Policy | 🟢 **CRITICAL** | Checking business rules, money caps, roles, SLAs |
 | `db/migrations/*.sql` | SQL Schema Migrations | 🟡 **REFERENCE** | Only read if altering DB tables/enums |
 | `db/database.md` | Schema & Entity Relationship Docs | 🟡 **REFERENCE** | High-level DB architecture reference |
 | `scripts/*` | Standalone CLI Test Scripts | 🔴 **IRRELEVANT / DO NOT READ** | Do NOT read unless running local CLI debug tests |
