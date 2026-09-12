@@ -13,11 +13,13 @@ from uuid import UUID
 from fastapi import APIRouter, HTTPException, Query
 
 from app.core.database import supabase
+from app.core.logging import get_logger
 from app.models.users import UserCreate, UserUpdate, UserOut, UserListOut
 from app.models.claims import ClaimListOut
 from app.models.enums import UserRole
 
 router = APIRouter(prefix="/users", tags=["Users"])
+logger = get_logger(__name__)
 
 
 def _resolve_user_id(identifier: str) -> str | None:
@@ -55,9 +57,11 @@ def list_users(
 ):
     try:
         q = supabase.table("users").select("*")
-        if role:
+        if role and hasattr(role, "value"):
             q = q.eq("role", role.value)
-        if is_active is not None:
+        elif role and isinstance(role, str):
+            q = q.eq("role", role)
+        if is_active is not None and isinstance(is_active, bool):
             q = q.eq("is_active", is_active)
         if email:
             q = q.ilike("email", f"%{email.strip()}%")

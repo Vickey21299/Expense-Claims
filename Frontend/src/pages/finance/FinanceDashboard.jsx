@@ -6,7 +6,7 @@ import { ShieldCheck, AlertTriangle, CreditCard, IndianRupee, ArrowRight } from 
 import StatCard from "../../components/common/StatCard";
 import StatusBadge from "../../components/common/StatusBadge";
 import { getFinanceDashboard, getFinanceClaims } from "../../services/api";
-import { CURRENT_FINANCE } from "../../data/mockClaims";
+import { CURRENT_FINANCE } from "../../data/users";
 
 function formatDate(dateStr) {
   if (!dateStr) return "—";

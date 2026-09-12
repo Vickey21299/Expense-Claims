@@ -1,26 +1,26 @@
 // ManagerClaims — full team claims list with filters and search.
-// Manager can filter by status and search by employee name or merchant.
+// Manager can filter by status and search by employee name, merchant, or claim reference.
 
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Search } from "lucide-react";
+import { Search, ShieldAlert, RefreshCw } from "lucide-react";
 import StatusBadge from "../../components/common/StatusBadge";
 import { getManagerClaims } from "../../services/api";
 
 const FILTERS = [
-  { key: "ALL", label: "All" },
+  { key: "ALL", label: "All Claims" },
   { key: "PENDING", label: "Pending Review" },
-  { key: "APPROVED", label: "Approved" },
+  { key: "FLAGGED", label: "Flagged Anomaly" },
+  { key: "APPROVED", label: "Approved / Confirmed" },
   { key: "REJECTED", label: "Rejected" },
-  { key: "FLAGGED", label: "Flagged" },
 ];
 
 const FILTER_MAP = {
   ALL: null,
   PENDING: ["SUBMITTED", "UNDER_REVIEW"],
-  APPROVED: ["APPROVED"],
-  REJECTED: ["REJECTED"],
   FLAGGED: ["FLAGGED"],
+  APPROVED: ["APPROVED", "MANAGER_CONFIRMED", "READY_FOR_PAYMENT", "PAID"],
+  REJECTED: ["REJECTED"],
 };
 
 function formatDate(dateStr) {
@@ -45,14 +45,27 @@ export default function ManagerClaims() {
   const navigate = useNavigate();
   const [claims, setClaims] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [filter, setFilter] = useState("ALL");
   const [search, setSearch] = useState("");
 
+  const loadClaims = () => {
+    setRefreshing(true);
+    getManagerClaims()
+      .then((data) => {
+        setClaims(data);
+        setLoading(false);
+        setRefreshing(false);
+      })
+      .catch((err) => {
+        console.error("Failed to fetch manager claims:", err);
+        setLoading(false);
+        setRefreshing(false);
+      });
+  };
+
   useEffect(() => {
-    getManagerClaims().then((data) => {
-      setClaims(data);
-      setLoading(false);
-    });
+    loadClaims();
   }, []);
 
   // Apply filters
@@ -66,7 +79,9 @@ export default function ManagerClaims() {
     filtered = filtered.filter(
       (c) =>
         (c.employee?.name || "").toLowerCase().includes(q) ||
-        (c.merchant || "").toLowerCase().includes(q)
+        (c.merchant || "").toLowerCase().includes(q) ||
+        (c.claimRef || c.id || "").toLowerCase().includes(q) ||
+        (c.category || "").toLowerCase().includes(q)
     );
   }
 
@@ -75,7 +90,7 @@ export default function ManagerClaims() {
       <div className="page-content">
         <div className="loading-state">
           <div className="spinner" />
-          <p>Loading claims…</p>
+          <p>Loading team claims…</p>
         </div>
       </div>
     );
@@ -88,9 +103,18 @@ export default function ManagerClaims() {
         <div>
           <h1 className="page-header__title">Team Claims</h1>
           <p className="page-header__subtitle">
-            Review reimbursement claims submitted by your team.
+            Review and track reimbursement claims submitted across your team.
           </p>
         </div>
+        <button
+          className="btn btn--ghost btn--sm"
+          onClick={loadClaims}
+          disabled={refreshing}
+          style={{ display: "flex", alignItems: "center", gap: "6px" }}
+        >
+          <RefreshCw size={14} className={refreshing ? "spin" : ""} />
+          {refreshing ? "Refreshing…" : "Refresh"}
+        </button>
       </div>
 
       {/* Search */}
@@ -100,7 +124,7 @@ export default function ManagerClaims() {
           id="mgr-search-input"
           type="text"
           className="search-bar__input"
-          placeholder="Search employee or merchant…"
+          placeholder="Search employee, merchant, reference (e.g. CLM-1031), or category…"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
@@ -126,7 +150,7 @@ export default function ManagerClaims() {
 
         {filtered.length === 0 ? (
           <div className="empty-state">
-            <p className="empty-state__text">No claims found for this filter.</p>
+            <p className="empty-state__text">No claims found for this filter or search query.</p>
           </div>
         ) : (
           <div className="table-container">
@@ -134,11 +158,12 @@ export default function ManagerClaims() {
               <thead>
                 <tr>
                   <th>Employee</th>
-                  <th>Date</th>
-                  <th>Merchant</th>
+                  <th>Claim Initiated</th>
+                  <th>Expense Date</th>
+                  <th>Merchant & Ref</th>
                   <th>Category</th>
                   <th className="text-right">Amount</th>
-                  <th>Status</th>
+                  <th>Status & Risk</th>
                   <th>Action</th>
                 </tr>
               </thead>
@@ -155,15 +180,16 @@ export default function ManagerClaims() {
                   >
                     <td>
                       <div className="claims-table__employee">
-                        <span className="employee-name">{claim.employee?.name || "—"}</span>
-                        <span className="claim-id">{claim.employee?.role || ""}</span>
+                        <span className="employee-name">{claim.employee?.name || "Employee"}</span>
+                        <span className="claim-id">{claim.employee?.department || "Engineering"} · {claim.employee?.role || "Staff"}</span>
                       </div>
                     </td>
-                    <td className="claims-table__date">{formatDate(claim.date)}</td>
+                    <td className="claims-table__date">{formatDate(claim.submittedAt || claim.createdAt)}</td>
+                    <td className="claims-table__date">{formatDate(claim.date || claim.claim_date)}</td>
                     <td>
                       <div className="claims-table__merchant">
                         <span className="merchant-name">{claim.merchant}</span>
-                        <span className="claim-id">{claim.id}</span>
+                        <span className="claim-id">{claim.claimRef || claim.id}</span>
                       </div>
                     </td>
                     <td className="claims-table__category">{claim.category || "—"}</td>
@@ -171,7 +197,27 @@ export default function ManagerClaims() {
                       {formatAmount(claim.amount, claim.currency)}
                     </td>
                     <td className="claims-table__status">
-                      <StatusBadge status={claim.status} />
+                      <div style={{ display: "flex", flexDirection: "column", gap: "4px", alignItems: "flex-start" }}>
+                        <StatusBadge status={claim.status} />
+                        {claim.duplicate_risk_percentage != null && claim.duplicate_risk_percentage > 30 && (
+                          <span
+                            style={{
+                              fontSize: "10px",
+                              fontWeight: 700,
+                              padding: "2px 6px",
+                              borderRadius: "4px",
+                              backgroundColor: claim.duplicate_risk_percentage >= 70 ? "rgba(239, 68, 68, 0.15)" : "rgba(245, 158, 11, 0.15)",
+                              color: claim.duplicate_risk_percentage >= 70 ? "#ef4444" : "#b45309",
+                              display: "inline-flex",
+                              alignItems: "center",
+                              gap: "3px",
+                            }}
+                          >
+                            <ShieldAlert size={11} />
+                            {claim.duplicate_risk_percentage}% risk
+                          </span>
+                        )}
+                      </div>
                     </td>
                     <td>
                       <button

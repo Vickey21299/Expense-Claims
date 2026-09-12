@@ -1,12 +1,8 @@
-// CreateClaim — receipt-first expense submission flow.
-// Step 1: Upload receipt or paste text → mock AI extraction
-// Step 2: Review & edit extracted fields → Save Draft or Submit
-
 import { useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { Upload, FileText, Check, Loader2, ArrowLeft, User, AlertCircle, HelpCircle } from "lucide-react";
-import { analyzeReceipt, createClaim, submitClaim, EXPENSE_CATEGORIES } from "../../services/api";
-import { CURRENT_USER } from "../../data/mockClaims";
+import { Upload, FileText, Check, Loader2, ArrowLeft, User, AlertCircle, HelpCircle, Sparkles } from "lucide-react";
+import { analyzeReceipt, createClaim, submitClaim, uploadReceipt, EXPENSE_CATEGORIES } from "../../services/api";
+import { CURRENT_USER } from "../../data/users";
 
 const STEPS = { UPLOAD: "upload", ANALYZING: "analyzing", REVIEW: "review", SUBMITTING: "submitting", SUCCESS: "success" };
 
@@ -24,12 +20,13 @@ export default function CreateClaim() {
   const navigate = useNavigate();
   const fileInputRef = useRef(null);
   const [step, setStep] = useState(STEPS.UPLOAD);
-  const [pasteText, setPasteText] = useState("");
   const [form, setForm] = useState(EMPTY_FORM);
   const [errors, setErrors] = useState({});
   const [dragOver, setDragOver] = useState(false);
   const [uploadedFileName, setUploadedFileName] = useState(null);
   const [selectedFile, setSelectedFile] = useState(null);
+  const [analyzedLineItems, setAnalyzedLineItems] = useState([]);
+  const [analysisNotice, setAnalysisNotice] = useState(null);
 
   // ── Handlers ──────────────────────────────────────────────
 
@@ -37,23 +34,31 @@ export default function CreateClaim() {
     if (!file) return;
     setUploadedFileName(file.name);
     setSelectedFile(file);
+    setAnalysisNotice(null);
   }
 
   async function handleAnalyzeBill() {
     if (!selectedFile) return;
     setStep(STEPS.ANALYZING);
+    setAnalysisNotice(null);
     try {
       const extracted = await analyzeReceipt(selectedFile);
       setForm({
         merchant: extracted.merchant || "",
-        amount: String(extracted.amount || ""),
+        amount: extracted.amount !== null && extracted.amount !== undefined ? String(extracted.amount) : "",
         date: extracted.date || "",
         category: extracted.category || "",
         description: extracted.description || "",
       });
+      if (Array.isArray(extracted.line_items) && extracted.line_items.length > 0) {
+        setAnalyzedLineItems(extracted.line_items);
+      }
+      setAnalysisNotice("Receipt analyzed with Gemini AI! Please review the extracted fields.");
       setStep(STEPS.REVIEW);
-    } catch {
-      setStep(STEPS.UPLOAD);
+    } catch (err) {
+      console.warn("AI extraction warning:", err);
+      setAnalysisNotice("Automatic extraction was unavailable, but you can fill in details manually.");
+      setStep(STEPS.REVIEW);
     }
   }
 
@@ -75,8 +80,8 @@ export default function CreateClaim() {
       const amt = Number(form.amount);
       if (isNaN(amt)) {
         errs.amount = "Amount must be a number";
-      } else if (amt > 10000) {
-        errs.amount = "Maximum amount per claim is ₹10,000";
+      } else if (amt > 200000) {
+        errs.amount = "Maximum amount per claim is ₹2,00,000";
       }
     }
     setErrors(errs);
@@ -84,18 +89,46 @@ export default function CreateClaim() {
   }
 
   async function handleSaveDraft() {
-    setStep(STEPS.SUBMITTING);
-    const claim = await createClaim({ ...form, currency: "INR" });
-    navigate("/claims", { state: { toast: `Draft saved — ${claim.id}` } });
+    try {
+      setStep(STEPS.SUBMITTING);
+      const claim = await createClaim({ ...form, currency: "INR" });
+      if (selectedFile && claim.id) {
+        try {
+          await uploadReceipt(claim.id, selectedFile);
+        } catch (uploadErr) {
+          console.warn("Receipt upload warning:", uploadErr);
+        }
+      }
+      navigate("/claims", { state: { toast: `Draft saved — ${claim.claimRef || claim.claim_ref || claim.id}` } });
+    } catch (err) {
+      console.error("Save draft error:", err);
+      setErrors((prev) => ({ ...prev, form: err.message || "Failed to save draft" }));
+      setStep(STEPS.REVIEW);
+    }
   }
 
   async function handleSubmit() {
     if (!validate()) return;
-    setStep(STEPS.SUBMITTING);
-    const claim = await createClaim({ ...form, currency: "INR" });
-    await submitClaim(claim.id);
-    setStep(STEPS.SUCCESS);
-    setTimeout(() => navigate("/claims", { state: { toast: "Claim submitted successfully! 🎉" } }), 1600);
+    try {
+      setStep(STEPS.SUBMITTING);
+      const claim = await createClaim({ ...form, currency: "INR" });
+      if (selectedFile && claim.id) {
+        try {
+          await uploadReceipt(claim.id, selectedFile);
+        } catch (uploadErr) {
+          console.warn("Receipt upload warning:", uploadErr);
+        }
+      }
+      await submitClaim(claim.id);
+      setStep(STEPS.SUCCESS);
+      setTimeout(() => {
+        navigate("/claims", { state: { toast: `Claim ${claim.claimRef || claim.claim_ref || ""} submitted successfully! 🎉` } });
+      }, 1400);
+    } catch (err) {
+      console.error("Submit claim error:", err);
+      setErrors((prev) => ({ ...prev, form: err.message || "Failed to submit claim" }));
+      setStep(STEPS.REVIEW);
+    }
   }
 
   function handleFormChange(field, value) {
@@ -136,6 +169,23 @@ export default function CreateClaim() {
               <p className="review-card__subtitle">
                 Fill in the details below. Upload a receipt to auto-fill.
               </p>
+              {analysisNotice && (
+                <div style={{
+                  marginTop: "12px",
+                  padding: "10px 14px",
+                  borderRadius: "8px",
+                  background: "rgba(99, 102, 241, 0.1)",
+                  border: "1px solid rgba(99, 102, 241, 0.25)",
+                  color: "var(--accent)",
+                  fontSize: "13px",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "8px",
+                }}>
+                  <Sparkles size={16} />
+                  <span>{analysisNotice}</span>
+                </div>
+              )}
             </div>
 
             <form className="claim-form" onSubmit={(e) => e.preventDefault()}>
@@ -335,6 +385,24 @@ export default function CreateClaim() {
                    <p style={{fontSize: '14px', color: 'var(--text-muted)', textAlign: 'center'}}>No receipt uploaded.</p>
                 </div>
               )}
+
+              {analyzedLineItems.length > 0 && (
+                <div style={{ marginTop: '16px' }}>
+                  <p style={{ fontSize: '12px', fontWeight: '600', color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '8px' }}>
+                    AI-Detected Items ({analyzedLineItems.length})
+                  </p>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', maxHeight: '180px', overflowY: 'auto' }}>
+                    {analyzedLineItems.map((item, idx) => (
+                      <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', padding: '6px 10px', background: 'var(--surface-2)', borderRadius: '6px' }}>
+                        <span style={{ color: 'var(--text-h)' }}>{item.description || `Item #${idx + 1}`}</span>
+                        <span style={{ fontWeight: 600, color: 'var(--text-h)' }}>
+                          ₹{item.amount != null ? Number(item.amount).toLocaleString('en-IN') : '—'}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -342,37 +410,45 @@ export default function CreateClaim() {
 
       {/* ── Bottom Section: Actions ── */}
       {(step === STEPS.REVIEW || step === STEPS.SUBMITTING || step === STEPS.SUCCESS) && (
-        <div className="card bottom-actions" style={{ marginTop: '24px', display: 'flex', justifyContent: 'flex-end', gap: '12px', padding: '16px 24px' }}>
-          <button
-            id="save-draft-btn"
-            type="button"
-            className="btn btn--ghost"
-            onClick={handleSaveDraft}
-            disabled={step === STEPS.SUBMITTING || step === STEPS.SUCCESS}
-          >
-            Save Draft
-          </button>
-          <button
-            id="submit-claim-btn"
-            type="button"
-            className="btn btn--primary"
-            onClick={handleSubmit}
-            disabled={step === STEPS.SUBMITTING || step === STEPS.SUCCESS}
-          >
-            {step === STEPS.SUCCESS ? (
-              <>
-                <Check size={15} strokeWidth={2.5} />
-                Submitted!
-              </>
-            ) : step === STEPS.SUBMITTING ? (
-              <>
-                <Loader2 size={15} className="spin" />
-                Submitting…
-              </>
-            ) : (
-              "Submit Claim"
-            )}
-          </button>
+        <div className="card bottom-actions" style={{ marginTop: '24px', display: 'flex', flexDirection: 'column', gap: '12px', padding: '16px 24px' }}>
+          {errors.form && (
+            <div style={{ padding: '10px 14px', borderRadius: '6px', background: 'rgba(239, 68, 68, 0.1)', color: 'var(--danger)', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <AlertCircle size={15} />
+              <span>{errors.form}</span>
+            </div>
+          )}
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
+            <button
+              id="save-draft-btn"
+              type="button"
+              className="btn btn--ghost"
+              onClick={handleSaveDraft}
+              disabled={step === STEPS.SUBMITTING || step === STEPS.SUCCESS}
+            >
+              Save Draft
+            </button>
+            <button
+              id="submit-claim-btn"
+              type="button"
+              className="btn btn--primary"
+              onClick={handleSubmit}
+              disabled={step === STEPS.SUBMITTING || step === STEPS.SUCCESS}
+            >
+              {step === STEPS.SUCCESS ? (
+                <>
+                  <Check size={15} strokeWidth={2.5} />
+                  Submitted!
+                </>
+              ) : step === STEPS.SUBMITTING ? (
+                <>
+                  <Loader2 size={15} className="spin" />
+                  Submitting…
+                </>
+              ) : (
+                "Submit Claim"
+              )}
+            </button>
+          </div>
         </div>
       )}
     </div>

@@ -595,6 +595,39 @@ input, textarea, select {
   white-space: nowrap;
 }
 
+.claims-table__initiated {
+  white-space: nowrap;
+}
+
+.initiated-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.initiated-date {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-h);
+  white-space: nowrap;
+}
+
+.initiated-time {
+  font-size: 11px;
+  font-family: var(--mono);
+  color: var(--text-muted);
+}
+
+.claims-table__expense-date {
+  white-space: nowrap;
+}
+
+.expense-date-val {
+  font-size: 13px;
+  color: var(--text);
+  font-weight: 500;
+}
+
 .claims-table__merchant {
   display: flex;
   flex-direction: column;
@@ -750,14 +783,58 @@ input, textarea, select {
   margin-top: 2px;
 }
 
-/* ── 17. Claim History ── */
+/* ── 17. Claim History & SLA Audit Timeline ── */
+.claim-history-card {
+  display: flex;
+  flex-direction: column;
+}
+
+.claim-history-card__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 12px;
+}
+
+.claim-history-card__title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .claim-history__title {
   font-size: 14px;
   font-weight: 600;
   color: var(--text-h);
   text-transform: uppercase;
   letter-spacing: 0.6px;
-  margin-bottom: 16px;
+}
+
+.sla-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: var(--radius-full);
+  background: rgba(14, 165, 233, 0.12);
+  color: #0284c7;
+  border: 1px solid rgba(14, 165, 233, 0.25);
+}
+
+.sla-step-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-sm);
+  background: var(--surface-2);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-family: var(--mono);
 }
 
 .claim-history__list {
@@ -766,28 +843,34 @@ input, textarea, select {
   flex-direction: column;
   gap: 0;
   position: relative;
+  margin: 0;
+  padding: 0;
 }
 
 .claim-history__item {
   display: flex;
   gap: 14px;
-  padding-bottom: 20px;
+  padding-bottom: 22px;
   position: relative;
 }
 
-.claim-history__item:last-child { padding-bottom: 0; }
+.claim-history__item:last-child {
+  padding-bottom: 0;
+}
 
 .claim-history__item::before {
   content: '';
   position: absolute;
   left: 11px;
-  top: 24px;
+  top: 26px;
   bottom: 0;
-  width: 1px;
+  width: 2px;
   background: var(--border);
 }
 
-.claim-history__item:last-child::before { display: none; }
+.claim-history__item:last-child::before {
+  display: none;
+}
 
 .claim-history__dot {
   flex-shrink: 0;
@@ -795,17 +878,21 @@ input, textarea, select {
 }
 
 .dot {
-  width: 24px; height: 24px;
+  width: 24px;
+  height: 24px;
   border-radius: var(--radius-full);
-  display: flex; align-items: center; justify-content: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   font-size: 11px;
   font-weight: 700;
 }
 
 .dot--done {
-  background: var(--accent-bg);
-  color: var(--accent);
-  border: 1.5px solid var(--accent-border);
+  background: var(--surface-card);
+  color: var(--text-h);
+  border: 1.5px solid var(--border);
+  box-shadow: 0 1px 2px rgba(0,0,0,0.05);
 }
 
 .dot--pulse {
@@ -817,7 +904,8 @@ input, textarea, select {
 .dot--pulse::after {
   content: '';
   position: absolute;
-  width: 100%; height: 100%;
+  width: 100%;
+  height: 100%;
   border-radius: var(--radius-full);
   background: #d97706;
   opacity: 0.3;
@@ -838,22 +926,94 @@ input, textarea, select {
   border: 1.5px solid var(--border);
 }
 
+.claim-history__event-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
 .claim-history__event {
   font-size: 13px;
-  font-weight: 500;
+  font-weight: 600;
   color: var(--text-h);
   line-height: 1.4;
+  margin: 0;
 }
 
 .claim-history__item--current .claim-history__event {
   color: #d97706;
-  font-weight: 600;
+}
+
+.claim-history__meta-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 3px;
+  font-size: 12px;
+  color: var(--text-sm);
 }
 
 .claim-history__time {
   font-size: 12px;
   color: var(--text-sm);
-  margin-top: 2px;
+}
+
+.claim-history__actor {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+/* History comment boxes */
+.history-comment-box {
+  margin-top: 8px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  font-size: 13px;
+}
+
+.history-comment-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 4px;
+}
+
+.history-comment-box--manager {
+  background: rgba(59, 130, 246, 0.06);
+  border-color: rgba(59, 130, 246, 0.2);
+}
+.history-comment-box--manager .history-comment-header {
+  color: #2563eb;
+}
+
+.history-comment-box--finance {
+  background: rgba(168, 85, 247, 0.06);
+  border-color: rgba(168, 85, 247, 0.2);
+}
+.history-comment-box--finance .history-comment-header {
+  color: #7c3aed;
+}
+
+.history-comment-box--reject {
+  background: rgba(239, 68, 68, 0.06);
+  border-color: rgba(239, 68, 68, 0.2);
+}
+.history-comment-box--reject .history-comment-header {
+  color: #dc2626;
+}
+
+.history-comment-text {
+  font-style: italic;
+  color: var(--text-h);
+  line-height: 1.45;
+  margin: 0;
 }
 
 /* ── 18. Receipt Preview ── */

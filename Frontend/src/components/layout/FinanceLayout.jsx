@@ -3,7 +3,7 @@
 
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { LayoutDashboard, ShieldCheck, CreditCard, BarChart3, Receipt } from "lucide-react";
-import { CURRENT_FINANCE } from "../../data/mockClaims";
+import { CURRENT_FINANCE } from "../../data/users";
 import RoleSwitcher from "../common/RoleSwitcher";
 
 const NAV_ITEMS = [

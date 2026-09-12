@@ -36,3 +36,25 @@ class PaymentOut(BaseModel):
 class PaymentListOut(BaseModel):
     total: int
     payments: list[PaymentOut]
+
+
+from typing import Any
+
+
+class PayoutRequest(BaseModel):
+    claim_id: UUID
+    amount: float
+    currency: str = "INR"
+    recipient_id: UUID
+    reference_id: str | None = None
+    notes: str | None = None
+
+
+class PayoutResult(BaseModel):
+    success: bool
+    transaction_reference: str
+    processed_at: datetime
+    provider_name: str
+    channel: str = "UPI_DIRECT"
+    details: dict[str, Any] = {}
+

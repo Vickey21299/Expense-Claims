@@ -9,11 +9,26 @@ export default function ReceiptPreview({ receiptUrl, merchant }) {
       <h3 className="receipt-preview__title">Receipt</h3>
       {receiptUrl ? (
         <div className="receipt-preview__image-wrap">
-          <img
-            src={receiptUrl}
-            alt={`Receipt for ${merchant || "expense"}`}
-            className="receipt-preview__image"
-          />
+          {receiptUrl.toLowerCase().includes(".pdf") ? (
+            <div style={{ padding: "28px 16px", textAlign: "center", background: "var(--surface-2)", borderRadius: "var(--radius)", border: "1px solid var(--border)" }}>
+              <FileText size={44} color="var(--accent)" style={{ margin: "0 auto 12px" }} />
+              <p style={{ fontSize: "14px", fontWeight: 600, color: "var(--text-h)", marginBottom: "8px" }}>PDF Receipt</p>
+              <a href={receiptUrl} target="_blank" rel="noopener noreferrer" className="btn btn--secondary btn--sm">
+                Open / Download Document ↗
+              </a>
+            </div>
+          ) : (
+            <img
+              src={receiptUrl}
+              alt={`Receipt for ${merchant || "expense"}`}
+              className="receipt-preview__image"
+            />
+          )}
+          <div style={{ marginTop: "10px", textAlign: "center" }}>
+            <a href={receiptUrl} target="_blank" rel="noopener noreferrer" style={{ fontSize: "12px", color: "var(--accent)", fontWeight: 500, textDecoration: "underline" }}>
+              View full file in new tab ↗
+            </a>
+          </div>
         </div>
       ) : (
         <div className="receipt-preview__placeholder">

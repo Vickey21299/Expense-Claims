@@ -1,13 +1,10 @@
-// StaffDashboard — landing page for staff.
-// Shows summary stat cards and a preview of recent claims.
-
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Wallet, Clock, CheckCircle, Banknote, PlusCircle, ArrowRight } from "lucide-react";
+import { Wallet, Clock, CheckCircle, Banknote, PlusCircle, ArrowRight, AlertCircle, RefreshCw } from "lucide-react";
 import StatCard from "../../components/common/StatCard";
 import ClaimTable from "../../components/claims/ClaimTable";
 import { getMyClaims } from "../../services/api";
-import { CURRENT_USER } from "../../data/mockClaims";
+import { CURRENT_USER } from "../../data/users";
 
 function formatAmount(amount, currency = "INR") {
   return new Intl.NumberFormat("en-IN", {
@@ -28,12 +25,24 @@ export default function StaffDashboard() {
   const navigate = useNavigate();
   const [claims, setClaims] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  const fetchClaims = () => {
+    setLoading(true);
+    setError(null);
+    getMyClaims()
+      .then((data) => {
+        setClaims(data);
+        setLoading(false);
+      })
+      .catch((err) => {
+        setError(err.message || "Failed to load dashboard data");
+        setLoading(false);
+      });
+  };
 
   useEffect(() => {
-    getMyClaims().then((data) => {
-      setClaims(data);
-      setLoading(false);
-    });
+    fetchClaims();
   }, []);
 
   // Compute stats
@@ -68,15 +77,41 @@ export default function StaffDashboard() {
           <h1 className="page-header__title">My Expenses</h1>
           <p className="page-header__subtitle">Track and manage your reimbursement claims.</p>
         </div>
-        <button
-          id="dashboard-add-expense-btn"
-          className="btn btn--primary"
-          onClick={() => navigate("/add-expense")}
-        >
-          <PlusCircle size={16} strokeWidth={2} />
-          Add Expense
-        </button>
+        <div style={{ display: "flex", gap: "10px" }}>
+          <button
+            className="btn btn--ghost btn--sm"
+            onClick={fetchClaims}
+            disabled={loading}
+            title="Refresh dashboard"
+          >
+            <RefreshCw size={14} className={loading ? "spin" : ""} />
+            Refresh
+          </button>
+          <button
+            id="dashboard-add-expense-btn"
+            className="btn btn--primary"
+            onClick={() => navigate("/add-expense")}
+          >
+            <PlusCircle size={16} strokeWidth={2} />
+            Add Expense
+          </button>
+        </div>
       </div>
+
+      {error && (
+        <div className="card" style={{ padding: "20px", marginBottom: "24px", border: "1px solid rgba(239, 68, 68, 0.3)", background: "rgba(239, 68, 68, 0.05)" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+            <AlertCircle size={20} color="var(--danger)" />
+            <div style={{ flex: 1 }}>
+              <p style={{ fontWeight: 600, color: "var(--danger)" }}>Could not load expenses data</p>
+              <p style={{ fontSize: "13px", color: "var(--text-muted)" }}>{error}</p>
+            </div>
+            <button className="btn btn--secondary btn--sm" onClick={fetchClaims}>
+              Retry
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Stat cards */}
       {loading ? (

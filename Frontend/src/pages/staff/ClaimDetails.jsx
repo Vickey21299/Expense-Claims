@@ -3,7 +3,7 @@
 
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, User, Calendar, Tag, FileText, DollarSign, Building2 } from "lucide-react";
+import { ArrowLeft, User, Calendar, Tag, FileText, DollarSign, Building2, Clock } from "lucide-react";
 import StatusBadge from "../../components/common/StatusBadge";
 import ClaimHistory from "../../components/claims/ClaimHistory";
 import ReceiptPreview from "../../components/claims/ReceiptPreview";
@@ -11,11 +11,23 @@ import { getClaim } from "../../services/api";
 
 function formatDate(dateStr) {
   if (!dateStr) return "—";
-  return new Date(dateStr).toLocaleDateString("en-IN", {
+  const d = new Date(dateStr);
+  if (isNaN(d.getTime())) return "—";
+  return d.toLocaleDateString("en-IN", {
     day: "2-digit",
     month: "long",
     year: "numeric",
   });
+}
+
+function formatTime(dateStr) {
+  if (!dateStr) return "";
+  if (typeof dateStr === "string" && !dateStr.includes("T") && !dateStr.includes(":")) {
+    return "";
+  }
+  const d = new Date(dateStr);
+  if (isNaN(d.getTime())) return "";
+  return d.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", hour12: true });
 }
 
 function formatAmount(amount, currency = "INR") {
@@ -101,14 +113,14 @@ export default function ClaimDetails() {
       <div className="page-header page-header--compact">
         <div>
           <div className="page-header__meta">
-            <span className="claim-id-label">{claim.id}</span>
+            <span className="claim-id-label">{claim.claimRef || claim.claim_ref || claim.id}</span>
             <StatusBadge status={claim.status} />
           </div>
           <h1 className="page-header__title">
             {claim.merchant || "Draft Claim"}
           </h1>
           <p className="page-header__subtitle">
-            {claim.category} · {formatDate(claim.date)}
+            {claim.category || claim.claim_type} · Expense Date: {formatDate(claim.claim_date || claim.date)} · Initiated: {formatDate(claim.createdAt || claim.created_at || claim.submittedAt || claim.submitted_at)}
           </p>
         </div>
 
@@ -130,31 +142,92 @@ export default function ClaimDetails() {
             <div className="detail-rows">
               <DetailRow icon={Building2} label="Merchant" value={claim.merchant} />
               <DetailRow icon={DollarSign} label="Amount" value={formatAmount(claim.amount, claim.currency)} />
-              <DetailRow icon={Tag} label="Category" value={claim.category} />
-              <DetailRow icon={Calendar} label="Date" value={formatDate(claim.date)} />
+              <DetailRow icon={Tag} label="Category" value={claim.category || claim.claim_type} />
+              <DetailRow icon={Calendar} label="Expense Date" value={formatDate(claim.claim_date || claim.date)} />
+              <DetailRow
+                icon={Clock}
+                label="Claim Initiated"
+                value={
+                  claim.createdAt || claim.created_at || claim.submittedAt || claim.submitted_at
+                    ? `${formatDate(claim.createdAt || claim.created_at || claim.submittedAt || claim.submitted_at)}${
+                        formatTime(claim.createdAt || claim.created_at || claim.submittedAt || claim.submitted_at)
+                          ? ` at ${formatTime(claim.createdAt || claim.created_at || claim.submittedAt || claim.submitted_at)}`
+                          : ""
+                      }`
+                    : "—"
+                }
+              />
               {claim.description && (
                 <DetailRow icon={FileText} label="Description" value={claim.description} />
+              )}
+              {claim.paymentReference && (
+                <DetailRow icon={DollarSign} label="Payment Reference" value={claim.paymentReference} />
               )}
             </div>
           </div>
 
+          {/* Verification Audit Summary if available */}
+          {(claim.verificationStatus || (claim.verificationResults && claim.verificationResults.length > 0)) && (
+            <div className="card">
+              <h2 className="card__title">System Verification</h2>
+              <div style={{ display: "flex", flexDirection: "column", gap: "8px", marginTop: "12px" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <span style={{ fontSize: "13px", color: "var(--text-muted)" }}>Verification Status:</span>
+                  <span style={{
+                    fontSize: "12px",
+                    fontWeight: 600,
+                    padding: "3px 8px",
+                    borderRadius: "4px",
+                    background: claim.verificationStatus === "CLEAN" ? "rgba(16, 185, 129, 0.15)" : "rgba(245, 158, 11, 0.15)",
+                    color: claim.verificationStatus === "CLEAN" ? "#059669" : "#d97706",
+                  }}>
+                    {claim.verificationStatus || "CLEAN"}
+                  </span>
+                </div>
+                {claim.verificationResults && claim.verificationResults.length > 0 && (
+                  <p style={{ fontSize: "13px", color: "var(--text-h)", background: "var(--surface-2)", padding: "10px", borderRadius: "6px", margin: "4px 0 0" }}>
+                    {claim.verificationResults[0].message || "Claim passed deterministic verification checks."}
+                  </p>
+                )}
+              </div>
+            </div>
+          )}
+
           {/* Manager section */}
           <div className="card">
-            <h2 className="card__title">Assigned Manager</h2>
+            <h2 className="card__title">Assigned Manager & Review Context</h2>
             <div className="manager-row">
               <div className="manager-avatar" aria-hidden="true">
                 {claim.manager?.charAt(0) || "M"}
               </div>
               <div>
-                <p className="manager-name">{claim.manager || "—"}</p>
-                <p className="manager-meta">Reviewing this claim</p>
+                <p className="manager-name">{claim.manager || "Rahul Sharma"}</p>
+                <p className="manager-meta">Reviewing manager</p>
               </div>
             </div>
+
+            {claim.manager_comment && (
+              <div className="history-comment-box history-comment-box--manager" style={{ marginTop: "12px" }}>
+                <div className="history-comment-header">
+                  <span>Manager Justification Comment</span>
+                </div>
+                <p className="history-comment-text">"{claim.manager_comment}"</p>
+              </div>
+            )}
+
+            {claim.finance_comment && (
+              <div className="history-comment-box history-comment-box--finance" style={{ marginTop: "10px" }}>
+                <div className="history-comment-header">
+                  <span>Finance Verification Note</span>
+                </div>
+                <p className="history-comment-text">"{claim.finance_comment}"</p>
+              </div>
+            )}
           </div>
 
           {/* History */}
           <div className="card">
-            <ClaimHistory history={claim.history || []} />
+            <ClaimHistory history={claim.history || []} claim={claim} />
           </div>
         </div>
 

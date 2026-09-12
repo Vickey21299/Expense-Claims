@@ -25,7 +25,18 @@ const FILTER_STATUS_MAP = {
 function formatDate(dateStr) {
   if (!dateStr) return "—";
   const d = new Date(dateStr);
+  if (isNaN(d.getTime())) return "—";
   return d.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
+}
+
+function formatTime(dateStr) {
+  if (!dateStr) return "";
+  if (typeof dateStr === "string" && !dateStr.includes("T") && !dateStr.includes(":")) {
+    return "";
+  }
+  const d = new Date(dateStr);
+  if (isNaN(d.getTime())) return "";
+  return d.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", hour12: true });
 }
 
 function formatAmount(amount, currency = "INR") {
@@ -44,6 +55,12 @@ export default function ClaimTable({ claims = [], activeFilter, onFilterChange, 
     !activeFilter || activeFilter === "ALL" || !FILTER_STATUS_MAP[activeFilter]
       ? claims
       : claims.filter((c) => FILTER_STATUS_MAP[activeFilter].includes(c.status));
+
+  const sorted = [...filtered].sort((a, b) => {
+    const timeA = new Date(a.createdAt || a.created_at || a.submittedAt || a.submitted_at || a.date || a.claim_date || 0).getTime();
+    const timeB = new Date(b.createdAt || b.created_at || b.submittedAt || b.submitted_at || b.date || b.claim_date || 0).getTime();
+    return timeB - timeA;
+  });
 
   return (
     <div className="claim-table-wrap">
@@ -64,7 +81,7 @@ export default function ClaimTable({ claims = [], activeFilter, onFilterChange, 
         </div>
       )}
 
-      {filtered.length === 0 ? (
+      {sorted.length === 0 ? (
         <div className="empty-state">
           <p className="empty-state__text">No claims found for this filter.</p>
         </div>
@@ -73,7 +90,8 @@ export default function ClaimTable({ claims = [], activeFilter, onFilterChange, 
           <table className="claims-table" aria-label="My expense claims">
             <thead>
               <tr>
-                <th>Date</th>
+                <th>Claim Initiated</th>
+                <th>Expense Date</th>
                 <th>Merchant</th>
                 <th>Category</th>
                 <th className="text-right">Amount</th>
@@ -81,30 +99,44 @@ export default function ClaimTable({ claims = [], activeFilter, onFilterChange, 
               </tr>
             </thead>
             <tbody>
-              {filtered.map((claim) => (
-                <tr
-                  key={claim.id}
-                  className="claims-table__row"
-                  onClick={() => navigate(`/claims/${claim.id}`)}
-                  role="button"
-                  tabIndex={0}
-                  aria-label={`View claim from ${claim.merchant}`}
-                  onKeyDown={(e) => e.key === "Enter" && navigate(`/claims/${claim.id}`)}
-                >
-                  <td className="claims-table__date">{formatDate(claim.date)}</td>
-                  <td className="claims-table__merchant">
-                    <span className="merchant-name">{claim.merchant || <span className="text-muted">Draft</span>}</span>
-                    <span className="claim-id">{claim.id}</span>
-                  </td>
-                  <td className="claims-table__category">{claim.category || "—"}</td>
-                  <td className="claims-table__amount text-right">
-                    {claim.amount ? formatAmount(claim.amount, claim.currency) : "—"}
-                  </td>
-                  <td className="claims-table__status">
-                    <StatusBadge status={claim.status} />
-                  </td>
-                </tr>
-              ))}
+              {sorted.map((claim) => {
+                const initiatedDateStr = claim.createdAt || claim.created_at || claim.submittedAt || claim.submitted_at;
+                const expenseDateStr = claim.claim_date || claim.date;
+                const timeStr = formatTime(initiatedDateStr);
+
+                return (
+                  <tr
+                    key={claim.id}
+                    className="claims-table__row"
+                    onClick={() => navigate(`/claims/${claim.id}`)}
+                    role="button"
+                    tabIndex={0}
+                    aria-label={`View claim from ${claim.merchant}`}
+                    onKeyDown={(e) => e.key === "Enter" && navigate(`/claims/${claim.id}`)}
+                  >
+                    <td className="claims-table__initiated">
+                      <div className="initiated-cell">
+                        <span className="initiated-date">{formatDate(initiatedDateStr)}</span>
+                        {timeStr && <span className="initiated-time">{timeStr}</span>}
+                      </div>
+                    </td>
+                    <td className="claims-table__expense-date">
+                      <span className="expense-date-val">{formatDate(expenseDateStr)}</span>
+                    </td>
+                    <td className="claims-table__merchant">
+                      <span className="merchant-name">{claim.merchant || <span className="text-muted">Draft</span>}</span>
+                      <span className="claim-id">{claim.claimRef || claim.claim_ref || claim.id}</span>
+                    </td>
+                    <td className="claims-table__category">{claim.category || claim.claim_type || "—"}</td>
+                    <td className="claims-table__amount text-right">
+                      {claim.amount ? formatAmount(claim.amount, claim.currency) : "—"}
+                    </td>
+                    <td className="claims-table__status">
+                      <StatusBadge status={claim.status} />
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>

@@ -242,7 +242,7 @@ export default function FinanceClaimReview() {
 
           {/* Claim History */}
           <div className="card">
-            <ClaimHistory history={claim.history || []} />
+            <ClaimHistory history={claim.history || []} claim={claim} />
           </div>
         </div>
 

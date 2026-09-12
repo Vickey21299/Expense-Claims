@@ -23,6 +23,7 @@ from uuid import UUID
 from fastapi import APIRouter, HTTPException, Query
 
 from app.core.database import supabase
+from app.core.logging import get_logger
 from app.models.claims import (
     ClaimCreate, ClaimUpdate, ClaimOut, ClaimListOut,
     ClaimDetailOut, ClaimSubmitResponse,
@@ -32,15 +33,22 @@ from app.models.claims import (
 from app.models.enums import ClaimStatus, ALLOWED_TRANSITIONS
 
 router = APIRouter(prefix="/claims", tags=["Claims"])
+logger = get_logger(__name__)
 
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
 def _generate_claim_ref() -> str:
-    """Generate a unique human-readable claim ref like CLM-4829."""
-    suffix = "".join(random.choices(string.digits, k=4))
-    return f"CLM-{suffix}"
+    """Generate a unique human-readable claim ref like CLM-48291."""
+    import time
+    for _ in range(10):
+        suffix = "".join(random.choices(string.digits, k=5))
+        ref = f"CLM-{suffix}"
+        res = supabase.table("claims").select("id").eq("claim_ref", ref).execute()
+        if not res.data:
+            return ref
+    return f"CLM-{int(time.time() * 1000) % 1000000:06d}"
 
 
 def _append_history(
@@ -71,11 +79,23 @@ def _append_history(
 
 
 def _get_claim_or_404(claim_id: str) -> dict:
-    """Fetch a claim row or raise 404."""
-    result = supabase.table("claims").select("*").eq("id", claim_id).single().execute()
+    """Fetch a claim row by UUID or claim_ref, or raise 404."""
+    ident = str(claim_id).strip()
+    is_uuid = False
+    try:
+        UUID(ident)
+        is_uuid = True
+    except ValueError:
+        is_uuid = False
+
+    if is_uuid:
+        result = supabase.table("claims").select("*").eq("id", ident).execute()
+    else:
+        result = supabase.table("claims").select("*").ilike("claim_ref", ident).execute()
+
     if not result.data:
         raise HTTPException(status_code=404, detail=f"Claim {claim_id} not found")
-    return result.data
+    return result.data[0]
 
 
 # ---------------------------------------------------------------------------
@@ -159,26 +179,87 @@ def create_claim(body: ClaimCreate):
     summary="Get full claim detail",
     description="Returns claim with nested verification results, duplicate matches, and status history.",
 )
-def get_claim(claim_id: UUID):
+def get_claim(claim_id: str):
     try:
-        claim = _get_claim_or_404(str(claim_id))
+        claim = _get_claim_or_404(claim_id)
+        actual_id = claim["id"]
 
         # Fetch related data
-        ver = supabase.table("verification_results").select("*").eq("claim_id", str(claim_id)).execute()
-        dup = supabase.table("duplicate_matches").select("*").eq("claim_id", str(claim_id)).execute()
-        hist = supabase.table("claim_status_history").select("*").eq("claim_id", str(claim_id)).order("occurred_at").execute()
+        ver = supabase.table("verification_results").select("*").eq("claim_id", actual_id).execute()
+        dup = supabase.table("duplicate_matches").select("*").eq("claim_id", actual_id).execute()
+        hist = supabase.table("claim_status_history").select("*").eq("claim_id", actual_id).order("occurred_at").execute()
+        docs = supabase.table("claim_documents").select("*").eq("claim_id", actual_id).order("created_at").execute()
 
-        claim["verification_results"] = ver.data
-        claim["duplicate_matches"] = dup.data
-        claim["status_history"] = hist.data
+        claim["verification_results"] = ver.data or []
+        claim["duplicate_matches"] = dup.data or []
+        claim["status_history"] = hist.data or []
+        claim["documents"] = docs.data or []
 
-        logger.info("Fetched claim detail", extra={"claim_id": str(claim_id)})
+        # Fetch latest verification and LLM analysis
+        try:
+            ver_run = (
+                supabase.table("claim_verifications")
+                .select("*")
+                .eq("claim_id", actual_id)
+                .order("verified_at", desc=True)
+                .limit(1)
+                .execute()
+            )
+            if ver_run.data:
+                latest_v = ver_run.data[0]
+                claim["latest_verification"] = latest_v
+                evidence = latest_v.get("evidence") or {}
+                llm_data = evidence.get("llm_analysis")
+                if llm_data:
+                    claim["manager_recommendation"] = llm_data.get("manager_recommendation")
+                    claim["duplicate_risk_percentage"] = llm_data.get("duplicate_risk_percentage")
+                    claim["risk_classification"] = llm_data.get("risk_classification")
+                    claim["llm_analysis"] = llm_data
+                else:
+                    claim["manager_recommendation"] = latest_v.get("explanation")
+                    claim["duplicate_risk_percentage"] = int(min(100, float(latest_v.get("similarity_score", 0.0)) * 100))
+                    claim["risk_classification"] = "HIGH RISK" if claim["duplicate_risk_percentage"] >= 70 else ("MEDIUM RISK" if claim["duplicate_risk_percentage"] >= 40 else "LOW RISK")
+        except Exception as e:
+            logger.warning(f"[ClaimDetail] Could not attach latest verification: {e}")
+
+        # Fetch latest manager review / comment
+        try:
+            mgr_rev = (
+                supabase.table("manager_reviews")
+                .select("comment")
+                .eq("claim_id", actual_id)
+                .order("reviewed_at", desc=True)
+                .limit(1)
+                .execute()
+            )
+            if mgr_rev.data and mgr_rev.data[0].get("comment"):
+                claim["manager_comment"] = mgr_rev.data[0]["comment"]
+        except Exception as e:
+            logger.warning(f"[ClaimDetail] Could not attach manager comment: {e}")
+
+        # Fetch latest finance review / comment
+        try:
+            fin_rev = (
+                supabase.table("finance_reviews")
+                .select("comment")
+                .eq("claim_id", actual_id)
+                .order("reviewed_at", desc=True)
+                .limit(1)
+                .execute()
+            )
+            if fin_rev.data and fin_rev.data[0].get("comment"):
+                claim["finance_comment"] = fin_rev.data[0]["comment"]
+        except Exception as e:
+            logger.warning(f"[ClaimDetail] Could not attach finance comment: {e}")
+
+        logger.info("Fetched claim detail", extra={"claim_id": str(claim_id), "actual_id": actual_id})
         return claim
     except HTTPException:
         raise
     except Exception as exc:
         logger.error("Failed to get claim", extra={"claim_id": str(claim_id)}, exc_info=exc)
         raise HTTPException(status_code=500, detail=str(exc))
+
 
 
 # ---------------------------------------------------------------------------

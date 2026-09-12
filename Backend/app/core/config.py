@@ -13,6 +13,14 @@ class Settings:
     SUPABASE_URL: str = os.environ.get("VITE_SUPABASE_URL", "")
     SUPABASE_KEY: str = os.environ.get("VITE_SUPABASE_ANON_KEY", "")
 
+    # Gemini
+    GEMINI_API_KEY: str = os.environ.get("GEMINI_API_KEY", "")
+    GEMINI_MODEL: str = os.environ.get("GEMINI_MODEL", "gemini-2.5-flash")
+
+    # Storage
+    STORAGE_BUCKET: str = os.environ.get("STORAGE_BUCKET", "expense-receipts")
+    OCR_MAX_FILE_SIZE_MB: int = int(os.environ.get("OCR_MAX_FILE_SIZE_MB", "10"))
+
     # App
     APP_TITLE: str = "Expense Claims API"
     APP_VERSION: str = "1.0.0"

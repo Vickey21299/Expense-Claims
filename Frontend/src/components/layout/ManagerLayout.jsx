@@ -3,7 +3,7 @@
 
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { LayoutDashboard, Users, Receipt } from "lucide-react";
-import { CURRENT_MANAGER } from "../../data/mockClaims";
+import { CURRENT_MANAGER } from "../../data/users";
 import RoleSwitcher from "../common/RoleSwitcher";
 
 const NAV_ITEMS = [

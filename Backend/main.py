@@ -12,7 +12,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import settings
-from app.routers import health, users, claims, reviews, payments
+from app.routers import health, users, claims, reviews, payments, documents, verification
 
 logging.basicConfig(
     level=logging.INFO,
@@ -69,6 +69,8 @@ app.include_router(users.router,    prefix=API_PREFIX)
 app.include_router(claims.router,   prefix=API_PREFIX)
 app.include_router(reviews.router,  prefix=API_PREFIX)
 app.include_router(payments.router, prefix=API_PREFIX)
+app.include_router(documents.router, prefix=API_PREFIX)
+app.include_router(verification.router, prefix=API_PREFIX)
 
 # Root redirect → docs
 @app.get("/", include_in_schema=False)

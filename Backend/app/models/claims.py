@@ -46,6 +46,9 @@ class ClaimUpdate(BaseModel):
     manager_id: UUID | None = None
 
 
+from app.models.verification import LlmVerificationAnalysis
+
+
 class ClaimOut(ClaimBase):
     id: UUID
     claim_ref: str | None = None
@@ -59,8 +62,17 @@ class ClaimOut(ClaimBase):
     submitted_at: datetime | None = None
     created_at: datetime
     updated_at: datetime
+    manager_recommendation: str | None = None
+    duplicate_risk_percentage: int | None = None
+    risk_classification: str | None = None
+    llm_analysis: LlmVerificationAnalysis | None = None
+    manager_comment: str | None = None
+    finance_comment: str | None = None
+    employee: dict[str, Any] | None = None
+    employee_name: str | None = None
 
     model_config = {"from_attributes": True}
+
 
 
 class ClaimListOut(BaseModel):
@@ -103,13 +115,6 @@ class StatusHistoryOut(BaseModel):
     occurred_at: datetime
 
 
-class ClaimDetailOut(ClaimOut):
-    """Full claim detail including nested related records."""
-    verification_results: list[VerificationResultOut] = []
-    duplicate_matches: list[DuplicateMatchOut] = []
-    status_history: list[StatusHistoryOut] = []
-
-
 # ---------------------------------------------------------------------------
 # Claim document
 # ---------------------------------------------------------------------------
@@ -125,6 +130,16 @@ class ClaimDocumentOut(BaseModel):
     ocr_confidence: float | None = None
     ocr_processed_at: datetime | None = None
     created_at: datetime
+
+
+class ClaimDetailOut(ClaimOut):
+    """Full claim detail including nested related records."""
+    verification_results: list[VerificationResultOut] = []
+    duplicate_matches: list[DuplicateMatchOut] = []
+    status_history: list[StatusHistoryOut] = []
+    documents: list[ClaimDocumentOut] = []
+    latest_verification: dict[str, Any] | None = None
+
 
 
 # ---------------------------------------------------------------------------
