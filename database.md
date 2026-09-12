@@ -23,22 +23,30 @@ erDiagram
     users ||--o{ users : "manages (manager_id)"
     users ||--o{ claims : "submits (employee_id)"
     users ||--o{ claims : "assigned to (manager_id)"
-    users ||--o{ manager_reviews : "reviews"
-    users ||--o{ finance_reviews : "clears/rejects"
-    users ||--o{ payments : "processes"
-    users ||--o{ duplicate_matches : "resolves"
-    users ||--o{ claim_status_history : "acts as"
+    users ||--o{ manager_reviews : "reviews (manager_id)"
+    users ||--o{ finance_reviews : "clears/rejects (finance_user_id)"
+    users ||--o{ payments : "processes (processed_by)"
+    users ||--o{ duplicate_matches : "resolves (resolved_by)"
+    users ||--o{ claim_status_history : "acts as (actor_id)"
 
-    claims ||--o{ claim_documents : "contains"
-    claims ||--o{ claim_items : "contains"
-    claims ||--o{ verification_results : "undergoes"
-    claims ||--o{ duplicate_matches : "matched against"
-    claims ||--o{ claim_status_history : "tracks lifecycle"
-    claims ||--o{ manager_reviews : "receives"
-    claims ||--o{ finance_reviews : "receives"
-    claims ||--o| payments : "settled by"
+    claims ||--o{ claim_documents : "contains (claim_id)"
+    claims ||--o{ claim_items : "contains (claim_id)"
+    claims ||--o{ verification_results : "undergoes (claim_id)"
+    claims ||--o{ duplicate_matches : "matched against (claim_id)"
+    claims ||--o{ duplicate_matches : "historical target (matched_claim_id)"
+    claims ||--o{ claim_status_history : "tracks lifecycle (claim_id)"
+    claims ||--o{ manager_reviews : "receives (claim_id)"
+    claims ||--o{ finance_reviews : "receives (claim_id)"
+    claims ||--o| payments : "settled by (claim_id)"
 
-    claim_documents ||--o{ claim_items : "extracted from"
+    %% OCR Pipeline & Verification Engine Extensions
+    claim_documents ||--o{ claim_items : "extracted from (document_id)"
+    claim_documents ||--o{ ocr_processing : "processed by (document_id)"
+    claims ||--o{ claim_extracted_data : "has extracted (claim_id)"
+    claim_documents ||--o{ claim_extracted_data : "extracted into (document_id)"
+    ocr_processing ||--o{ claim_extracted_data : "generates (ocr_processing_id)"
+    claims ||--o{ claim_verifications : "verified by (claim_id)"
+    claims ||--o{ claim_verifications : "strongest match (strongest_match_claim_id)"
 
     users {
         UUID id PK
@@ -81,11 +89,69 @@ erDiagram
         document_type document_type
         TEXT file_name
         TEXT file_url
+        TEXT storage_path
+        TEXT checksum
         BIGINT file_size_bytes
         TEXT mime_type
         TEXT ocr_raw_text
         NUMERIC ocr_confidence
         TIMESTAMPTZ ocr_processed_at
+        TIMESTAMPTZ created_at
+        TIMESTAMPTZ updated_at
+    }
+
+    ocr_processing {
+        UUID id PK
+        UUID document_id FK
+        TEXT status
+        TEXT provider
+        TEXT provider_request_id
+        JSONB raw_response
+        TEXT error_code
+        TEXT error_message
+        INT retry_count
+        TIMESTAMPTZ started_at
+        TIMESTAMPTZ completed_at
+        TIMESTAMPTZ created_at
+        TIMESTAMPTZ updated_at
+    }
+
+    claim_extracted_data {
+        UUID id PK
+        UUID claim_id FK
+        UUID document_id FK
+        UUID ocr_processing_id FK
+        TEXT merchant
+        TEXT merchant_normalized
+        TEXT invoice_number
+        DATE transaction_date
+        CHAR currency
+        NUMERIC subtotal
+        NUMERIC tax
+        NUMERIC total
+        JSONB line_items
+        JSONB normalized_data
+        JSONB confidence_scores
+        JSONB validation_warnings
+        TIMESTAMPTZ created_at
+        TIMESTAMPTZ updated_at
+    }
+
+    claim_verifications {
+        UUID id PK
+        UUID claim_id FK
+        TEXT decision
+        NUMERIC similarity_score
+        UUID strongest_match_claim_id FK
+        TEXT matched_claim_status
+        INT matched_claim_age_days
+        TIMESTAMPTZ wait_until
+        JSONB field_scores
+        JSONB triggered_rules
+        JSONB evidence
+        TEXT explanation
+        TEXT engine_version
+        TIMESTAMPTZ verified_at
         TIMESTAMPTZ created_at
     }
 
@@ -177,14 +243,16 @@ erDiagram
 
 ---
 
-## 3. Custom Enum Types
+## 3. Custom Enum & Domain Types
 
-| Enum Name | Values | Description |
+| Enum Name / Type | Allowed Values | Description |
 |---|---|---|
-| `user_role` | `'staff'`, `'manager'`, `'finance'` | System access role |
-| `claim_status` | `'DRAFT'`, `'SUBMITTED'`, `'UNDER_REVIEW'`, `'FLAGGED'`, `'APPROVED'`, `'REJECTED'`, `'READY_FOR_PAYMENT'`, `'PAID'` | Main lifecycle status |
-| `ocr_status` | `'PENDING'`, `'PROCESSING'`, `'COMPLETED'`, `'FAILED'`, `'SKIPPED'` | Receipt parsing status |
-| `verification_status`| `'PENDING'`, `'CLEAN'`, `'FLAGGED'`, `'ERROR'` | Automated policy check outcome |
+| `user_role` | `'staff'`, `'manager'`, `'finance'` | System access & permission role |
+| `claim_status` | `'DRAFT'`, `'SUBMITTED'`, `'UNDER_REVIEW'`, `'FLAGGED'`, `'MANAGER_CONFIRMED'`, `'APPROVED'`, `'REJECTED'`, `'READY_FOR_PAYMENT'`, `'PAID'` | Main lifecycle state machine status |
+| `ocr_status` | `'PENDING'`, `'PROCESSING'`, `'COMPLETED'`, `'FAILED'`, `'SKIPPED'` | Receipt parsing status on claim |
+| `ocr_pipeline_status` | `'PENDING'`, `'PROCESSING'`, `'EXTRACTED'`, `'NORMALIZED'`, `'COMPLETED'`, `'FAILED'` | Granular status in `ocr_processing` |
+| `verification_status`| `'PENDING'`, `'CLEAN'`, `'FLAGGED'`, `'ERROR'` | Automated policy check outcome on claim |
+| `verification_decision`| `'CLEAN'`, `'POTENTIAL_DUPLICATE'`, `'BORDERLINE'`, `'WAITING_FOR_EXISTING_CLAIM'`, `'ESCALATE_TO_MANAGER'` | Granular engine decision in `claim_verifications` |
 | `document_type` | `'RECEIPT'`, `'INVOICE'`, `'BOARDING_PASS'`, `'OTHER'` | Attached file classification |
 | `finance_decision` | `'FINANCE_PENDING'`, `'FINANCE_CLEARED'`, `'FINANCE_REJECTED'`, `'FINANCE_EXCEPTION'` | Finance verification state |
 
@@ -201,7 +269,7 @@ flowchart LR
         Draft["📝 DRAFT"]
     end
 
-    subgraph Stage2 ["2. Submission & Validation"]
+    subgraph Stage2 ["2. Submission & Verification Engine"]
         Submitted["📨 SUBMITTED"]
         Flagged["⚠️ FLAGGED"]
     end
@@ -209,9 +277,10 @@ flowchart LR
     subgraph Stage3 ["3. Manager Review"]
         UnderReview["⏳ UNDER_REVIEW"]
         Approved["✅ APPROVED"]
+        ManagerConfirmed["🛡️ MANAGER_CONFIRMED"]
     end
 
-    subgraph Stage4 ["4. Finance & Settlement"]
+    subgraph Stage4 ["4. Finance Audit & Settlement"]
         Ready["🏦 READY_FOR_PAYMENT"]
         Paid["🎉 PAID<br/><i>(Terminal)</i>"]
     end
@@ -222,22 +291,25 @@ flowchart LR
 
     %% Primary Progression Flow
     Draft -->|Employee Submits| Submitted
-    Submitted -->|Policy Alert| Flagged
-    Submitted -->|Review Starts| UnderReview
-    Flagged -->|Review & Clarify| UnderReview
+    Submitted -->|Clean Verification| UnderReview
+    Submitted -->|Duplicate / Anomaly Detected| Flagged
+    Submitted -->|Fast-Track Clean| Approved
     
-    Submitted -->|Direct Approve| Approved
     UnderReview -->|Manager Approves| Approved
-    Flagged -->|Manager Approves| Approved
-
-    Approved -->|Finance Clears| Ready
+    UnderReview -->|Flag Anomaly| Flagged
+    
+    Flagged -->|Manager Confirms Context| ManagerConfirmed
+    ManagerConfirmed -->|Finance Clears Exception| Ready
+    Approved -->|Queued for Payment| Ready
     Ready -->|Payment Settled| Paid
 
     %% Rejection Routes
     Submitted -.->|Reject| Rejected
     UnderReview -.->|Reject| Rejected
     Flagged -.->|Reject| Rejected
+    ManagerConfirmed -.->|Finance Reject| Rejected
     Approved -.->|Finance Reject| Rejected
+    Ready -.->|Reject| Rejected
 ```
 
 ### 4.2 State Transition Matrix
@@ -248,17 +320,20 @@ flowchart LR
 | **`DRAFT`** | **`SUBMITTED`** | Submit claim | Staff | All required fields & receipts attached |
 | **`DRAFT`** | *Deleted* | Delete draft | Staff | Draft permanently deleted |
 | **`SUBMITTED`** | **`UNDER_REVIEW`** | Open / start review | Manager | Manager begins evaluating claim |
-| **`SUBMITTED`** | **`FLAGGED`** | Auto policy check / manual flag | System / Manager | Anomaly, duplicate, or policy limit flag |
-| **`SUBMITTED`** | **`APPROVED`** | Fast-track approval | Manager | Direct approval without detailed queue |
+| **`SUBMITTED`** | **`FLAGGED`** | Auto verification flag | Verification Engine | Similarity score >= 40% or duplicate detected |
+| **`SUBMITTED`** | **`APPROVED`** | Fast-track clean approval | Manager | Direct approval without detailed queue |
 | **`SUBMITTED`** | **`REJECTED`** | Reject claim | Manager | Reason required in review comment |
 | **`UNDER_REVIEW`**| **`FLAGGED`** | Flag suspicious items | Manager | Duplicate match or policy exception found |
-| **`UNDER_REVIEW`**| **`APPROVED`** | Approve claim | Manager | Moves claim to Finance queue |
+| **`UNDER_REVIEW`**| **`APPROVED`** | Approve clean claim | Manager | Moves clean claim to Payment Queue |
 | **`UNDER_REVIEW`**| **`REJECTED`** | Reject claim | Manager | Rejection comment recorded in history |
-| **`FLAGGED`** | **`APPROVED`** | Override / approve | Manager | Manager acknowledges flag and approves |
-| **`FLAGGED`** | **`REJECTED`** | Reject flagged claim | Manager | Rejection comment recorded |
-| **`APPROVED`** | **`READY_FOR_PAYMENT`** | Finance clearance | Finance | Finance verifies invoices & budget allocation |
+| **`FLAGGED`** | **`MANAGER_CONFIRMED`**| Confirm business context | Manager | Manager provides required justification note |
+| **`FLAGGED`** | **`REJECTED`** | Reject flagged claim | Manager | Confirmed duplicate or fraudulent |
+| **`MANAGER_CONFIRMED`**| **`READY_FOR_PAYMENT`** | Finance clear anomaly | Finance | Clears financial exception with comment |
+| **`MANAGER_CONFIRMED`**| **`REJECTED`** | Finance rejection | Finance | Financial exception rejected |
+| **`APPROVED`** | **`READY_FOR_PAYMENT`** | Ready for payment queue | Manager / Finance | Clean claim queued for disbursement |
 | **`APPROVED`** | **`REJECTED`** | Finance rejection | Finance | Non-compliant tax or missing compliance docs |
 | **`READY_FOR_PAYMENT`** | **`PAID`** | Record disbursement | Finance | Payment reference generated (Terminal State) |
+| **`READY_FOR_PAYMENT`** | **`REJECTED`** | Payment failure / cancel | Finance | Final audit rejection |
 
 ---
 
@@ -318,13 +393,16 @@ Stores receipt and invoice attachments along with raw OCR extraction text and co
 | `claim_id` | `UUID` | NOT NULL, REFERENCES `claims(id)` ON DELETE CASCADE | — | Parent claim ID |
 | `document_type` | `document_type` | NOT NULL | `'RECEIPT'` | `RECEIPT`, `INVOICE`, `BOARDING_PASS`, `OTHER` |
 | `file_name` | `TEXT` | — | `NULL` | Original filename |
-| `file_url` | `TEXT` | — | `NULL` | Storage URL (Supabase Storage / S3) |
+| `file_url` | `TEXT` | — | `NULL` | Storage public URL (Supabase Storage) |
+| `storage_path` | `TEXT` | — | `NULL` | Supabase Storage path (`claims/{claim_id}/{doc_id}/{filename}`) |
+| `checksum` | `TEXT` | — | `NULL` | SHA-256 hex digest for forensic deduplication |
 | `file_size_bytes` | `BIGINT` | — | `NULL` | File size in bytes |
 | `mime_type` | `TEXT` | — | `NULL` | e.g. `application/pdf`, `image/jpeg` |
 | `ocr_raw_text` | `TEXT` | — | `NULL` | Raw unstructured text extracted by OCR |
 | `ocr_confidence` | `NUMERIC(5,4)` | — | `NULL` | OCR confidence (0.0000 to 1.0000) |
 | `ocr_processed_at` | `TIMESTAMPTZ` | — | `NULL` | Completion timestamp of OCR run |
 | `created_at` | `TIMESTAMPTZ` | NOT NULL | `NOW()` | Upload timestamp |
+| `updated_at` | `TIMESTAMPTZ` | NOT NULL | `NOW()` | Auto-updated timestamp |
 
 ---
 
@@ -448,10 +526,80 @@ Terminal payment record created when a claim in `READY_FOR_PAYMENT` is settled. 
 
 ---
 
+### 5.11 `ocr_processing`
+Tracks asynchronous and synchronous OCR pipeline runs per document, maintaining retry counts and raw provider responses.
+
+| Column | Type | Constraints | Default | Description |
+|---|---|---|---|---|
+| `id` | `UUID` | PRIMARY KEY | `uuid_generate_v4()` | OCR run identifier |
+| `document_id` | `UUID` | NOT NULL, REFERENCES `claim_documents(id)` ON DELETE CASCADE | — | Target receipt document |
+| `status` | `TEXT` | CHECK (`status IN ('PENDING','PROCESSING','EXTRACTED','NORMALIZED','COMPLETED','FAILED')`) | `'PENDING'` | Pipeline step status |
+| `provider` | `TEXT` | NOT NULL | `'gemini'` | OCR provider / engine |
+| `provider_request_id`| `TEXT` | — | `NULL` | Upstream API request ID |
+| `raw_response` | `JSONB` | — | `NULL` | Unprocessed LLM / Vision payload |
+| `error_code` | `TEXT` | — | `NULL` | Failure code if errored |
+| `error_message` | `TEXT` | — | `NULL` | Descriptive error message |
+| `retry_count` | `INT` | NOT NULL | `0` | Number of retries executed |
+| `started_at` | `TIMESTAMPTZ` | — | `NULL` | Start timestamp of OCR call |
+| `completed_at` | `TIMESTAMPTZ` | — | `NULL` | End timestamp of OCR call |
+| `created_at` | `TIMESTAMPTZ` | NOT NULL | `NOW()` | Record creation timestamp |
+| `updated_at` | `TIMESTAMPTZ` | NOT NULL | `NOW()` | Auto-updated timestamp |
+
+---
+
+### 5.12 `claim_extracted_data`
+Normalized receipt information extracted by OCR. Exactly one primary record per successful extraction run.
+
+| Column | Type | Constraints | Default | Description |
+|---|---|---|---|---|
+| `id` | `UUID` | PRIMARY KEY | `uuid_generate_v4()` | Extracted record ID |
+| `claim_id` | `UUID` | NOT NULL, REFERENCES `claims(id)` ON DELETE CASCADE | — | Associated claim ID |
+| `document_id` | `UUID` | NOT NULL, REFERENCES `claim_documents(id)` ON DELETE CASCADE | — | Source document ID |
+| `ocr_processing_id` | `UUID` | REFERENCES `ocr_processing(id)` ON DELETE SET NULL | `NULL` | Linked OCR run attempt |
+| `merchant` | `TEXT` | — | `NULL` | Raw extracted merchant name |
+| `merchant_normalized`| `TEXT` | — | `NULL` | Cleaned vendor name for similarity matching |
+| `invoice_number` | `TEXT` | — | `NULL` | Extracted invoice / bill number |
+| `transaction_date` | `DATE` | — | `NULL` | Extracted date of expense |
+| `currency` | `CHAR(3)` | — | `NULL` | Extracted currency |
+| `subtotal` | `NUMERIC(12,2)` | — | `NULL` | Net amount before tax |
+| `tax` | `NUMERIC(12,2)` | — | `NULL` | Total tax / GST amount |
+| `total` | `NUMERIC(12,2)` | — | `NULL` | Final gross amount |
+| `line_items` | `JSONB` | NOT NULL | `'[]'::jsonb` | Extracted items array |
+| `normalized_data` | `JSONB` | NOT NULL | `'{}'::jsonb` | Parsed structured fields |
+| `confidence_scores` | `JSONB` | NOT NULL | `'{}'::jsonb` | Field-by-field OCR confidence |
+| `validation_warnings`| `JSONB` | NOT NULL | `'[]'::jsonb` | Sanitization warnings |
+| `created_at` | `TIMESTAMPTZ` | NOT NULL | `NOW()` | Creation timestamp |
+| `updated_at` | `TIMESTAMPTZ` | NOT NULL | `NOW()` | Auto-updated timestamp |
+
+---
+
+### 5.13 `claim_verifications`
+Persists verification engine decisions, deterministic similarity metrics, triggered rules, and Gemini forensic audit evidence.
+
+| Column | Type | Constraints | Default | Description |
+|---|---|---|---|---|
+| `id` | `UUID` | PRIMARY KEY | `uuid_generate_v4()` | Verification run ID |
+| `claim_id` | `UUID` | NOT NULL, REFERENCES `claims(id)` ON DELETE CASCADE | — | Target claim evaluated |
+| `decision` | `TEXT` | CHECK (`decision IN ('CLEAN', 'POTENTIAL_DUPLICATE', 'BORDERLINE', 'WAITING_FOR_EXISTING_CLAIM', 'ESCALATE_TO_MANAGER')`) | — | Final verification outcome |
+| `similarity_score` | `NUMERIC(5,4)` | NOT NULL | `0.0` | Maximum match score (0.0000 - 1.0000) |
+| `strongest_match_claim_id`| `UUID` | REFERENCES `claims(id)` ON DELETE SET NULL | `NULL` | Matched candidate claim ID |
+| `matched_claim_status`| `TEXT` | — | `NULL` | Status of historical match |
+| `matched_claim_age_days`| `INT` | — | `NULL` | Days elapsed since historical claim |
+| `wait_until` | `TIMESTAMPTZ` | — | `NULL` | Timeout for pending candidate claim |
+| `field_scores` | `JSONB` | NOT NULL | `'{}'::jsonb` | Breakdown: merchant, date, amount, file hash |
+| `triggered_rules` | `JSONB` | NOT NULL | `'[]'::jsonb` | Array of deterministic rules triggered |
+| `evidence` | `JSONB` | NOT NULL | `'{}'::jsonb` | Side-by-side comparison payload + LLM reasoning |
+| `explanation` | `TEXT` | — | `NULL` | Human-readable explanation |
+| `engine_version` | `TEXT` | NOT NULL | `'1.0.0-deterministic'` | Engine version tag |
+| `verified_at` | `TIMESTAMPTZ` | NOT NULL | `NOW()` | Run timestamp |
+| `created_at` | `TIMESTAMPTZ` | NOT NULL | `NOW()` | Record timestamp |
+
+---
+
 ## 6. Triggers and Indexes
 
 ### Automated `updated_at` Trigger
-A single PL/pgSQL trigger function automatically updates the `updated_at` timestamp before any `UPDATE` on `users`, `claims`, and `payments`:
+A single PL/pgSQL trigger function automatically updates the `updated_at` timestamp before any `UPDATE` on `users`, `claims`, `claim_documents`, `ocr_processing`, `claim_extracted_data`, and `payments`:
 
 ```sql
 CREATE OR REPLACE FUNCTION trigger_set_updated_at()
@@ -478,6 +626,14 @@ $$ LANGUAGE plpgsql;
 | `claims` | `idx_claims_claim_date` | B-tree (`claim_date DESC`) | Expense date sorting |
 | `claims` | `idx_claims_merchant` | GIN (`merchant gin_trgm_ops`) | Fast substring & fuzzy search on vendor names |
 | `claim_documents` | `idx_claim_documents_claim_id` | B-tree (`claim_id`) | Fetch documents for a claim |
+| `ocr_processing` | `idx_ocr_processing_document_id`| B-tree (`document_id`) | Link OCR attempts to document |
+| `ocr_processing` | `idx_ocr_processing_status` | B-tree (`status`) | Filter OCR pipeline states |
+| `claim_extracted_data`| `idx_claim_extracted_data_claim_id` | B-tree (`claim_id`) | Fast retrieval of extracted claim fields |
+| `claim_extracted_data`| `idx_claim_extracted_data_document_id`| B-tree (`document_id`) | Link extracted items to document |
+| `claim_extracted_data`| `idx_claim_extracted_data_merchant` | GIN (`merchant_normalized gin_trgm_ops`) | Fast vendor deduplication matching |
+| `claim_verifications`| `idx_claim_verifications_claim_id` | B-tree (`claim_id`) | Retrieve verification audit for claim |
+| `claim_verifications`| `idx_claim_verifications_decision` | B-tree (`decision`) | Filter claims by verification decision |
+| `claim_verifications`| `idx_claim_verifications_verified_at`| B-tree (`verified_at DESC`)| Chronological audit queries |
 | `claim_items` | `idx_claim_items_claim_id` | B-tree (`claim_id`) | Fetch line items for a claim |
 | `verification_results`| `idx_verification_results_claim_id` | B-tree (`claim_id`) | Fetch verification results |
 | `duplicate_matches` | `idx_duplicate_matches_claim_id` | B-tree (`claim_id`) | Match detection results by claim |
@@ -493,17 +649,18 @@ $$ LANGUAGE plpgsql;
 The migration SQL scripts are located in `Backend/db/migrations/`:
 
 ### Step 1: Optional Reset (Fresh install)
-To wipe all tables and enums cleanly:
+To wipe all tables, enums, and triggers cleanly:
 - Open **Supabase Dashboard** -> **SQL Editor** -> New query.
 - Copy & run `Backend/db/migrations/000_nuke.sql`.
 
-### Step 2: Apply Schema
-- In Supabase SQL Editor, run `Backend/db/migrations/001_initial_schema.sql`.
-- This creates extensions, enums, all 10 tables, generated columns, indexes, and triggers.
-
-### Step 3: Load Seed Data
-- In Supabase SQL Editor, run `Backend/db/migrations/002_seed_data.sql`.
-- Loads staff users (`usr-001`), managers (`usr-mgr-001`), finance controller (`usr-fin-001`), sample claims (`CLM-1031`, `CLM-1028`, `CLM-1024`, etc.), line items, audit logs, and test payment records.
+### Step 2: Apply Schema & Seeds
+Execute migrations in the following order:
+1. `001_initial_schema.sql`: Core schema (users, claims, claim_documents, items, reviews, payments, status_history).
+2. `002_seed_data.sql`: Seed staff users (`usr-001`), managers (`usr-mgr-001`), finance controller (`usr-fin-001`), sample claims, line items, and audit history.
+3. `003_ocr_pipeline.sql`: Creates `ocr_processing` and `claim_extracted_data` tables, adds `storage_path` and `checksum` to `claim_documents`.
+4. `004_storage_bucket.sql`: Creates Supabase Storage bucket `receipts` with public read policies.
+5. `005_verification_engine.sql`: Creates `claim_verifications` table for full deterministic and LLM explainability.
+6. `006_manager_actions.sql`: Adds `MANAGER_CONFIRMED` to the `claim_status` enum.
 
 ---
 
