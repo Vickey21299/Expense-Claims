@@ -299,6 +299,21 @@ def build_pdf(filename="Expense_Claims_Product_Guide.pdf"):
         "• <b>End-to-End Cycle Time:</b> Automatically calculates total turnaround time from creation to payout (e.g. <code>⚡ Turnaround: 2h 15m</code>).",
         body_style
     ))
+    story.append(Spacer(1, 6))
+
+    # 8. Future Work & Scalability Roadmap (1 to 100,000+ Users)
+    story.append(Paragraph("8. Future Work & Scalability Roadmap (Scaling 1 to 100,000+ Users)", h1_style))
+    story.append(Paragraph(
+        "• <b>Production Code Hardening:</b> Enforce strict static typing (<code>mypy --strict</code>), ClamAV virus scanning for uploads, binary magic-byte MIME validation, and circuit breakers (<code>tenacity</code>) for third-party AI APIs.<br/>"
+        "• <b>Observability & Grafana Telemetry:</b> Prometheus metrics exporter (RPS, error rate, p99 latency, DB pool saturation, Gemini token burn) paired with custom Grafana dashboards and OpenTelemetry distributed tracing.<br/>"
+        "• <b>High-Concurrency Architecture:</b> Offload heavy OCR and forensic analysis to asynchronous worker queues (Celery/ARQ with Redis). Deploy PgBouncer connection pooling and read replicas for analytical queries.<br/>"
+        "• <b>FinOps & Token Optimization:</b> Exact SHA-256 hash caching to bypass redundant Gemini API calls. Tiered gating ensures clean claims incur $0 LLM expense.<br/>"
+        "• <b>Multi-Tier Rate Limiting:</b> Redis token-bucket rate limiters (per-IP, per-user upload quotas, AI endpoint burst caps) fronted by Cloudflare WAF.<br/>"
+        "• <b>Enterprise IAM & RBAC:</b> Transition from mock auth to enterprise SSO (OAuth 2.0 / SAML 2.0 / Entra ID / Google Workspace) with cryptographically signed JWTs.<br/>"
+        "• <b>Automated Load & Stress Testing:</b> Locust & k6 test suites simulating 1,000 to 100,000 concurrent active users to validate sub-300ms p99 latency and zero data-loss resilience.<br/>"
+        "• <b>Banking & ERP Integrations:</b> Direct webhook integration with corporate disbursement rails (RazorpayX, Stripe Treasury, IMPS/NEFT) and automated ERP sync (SAP, Oracle NetSuite, QuickBooks).",
+        body_style
+    ))
 
     # Build Document
     doc.build(story, canvasmaker=NumberedCanvas)

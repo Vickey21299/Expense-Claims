@@ -213,3 +213,64 @@ Incoming Claim ──► Tier 1: Candidate Retrieval (Fast DB Index Query)
 | **Manager Queue Route** | `GET /api/v1/manager/claims?manager_id={uuid}` |
 | **Finance Queue Route** | `GET /api/v1/finance/claims` |
 | **Terminal State** | `PAID` (cannot be changed or deleted) |
+
+---
+
+## 10. 🚀 Future Work & Scalability Roadmap (Scaling from 1 to 100,000+ Users)
+
+To transition this system from an initial pilot/prototype to a battle-tested, enterprise-grade production platform serving 100,000+ concurrent employees, managers, and finance teams, the following multi-pillar roadmap will be executed in upcoming phases:
+
+### 1. 🔍 Production-Grade Code Quality & Security Hardening
+- **Static Analysis & Strict Typing**: Enforce strict Python typing (`mypy --strict`), Ruff linter, and formatting pipelines to eliminate edge-case runtime type errors.
+- **Security Audits & OWASP Top 10**: 
+  - Sanitize all file uploads with anti-virus scanners (ClamAV) before Supabase storage.
+  - Implement MIME sniffing verification (magic bytes check) to prevent malicious executable masquerading as PNG/PDF.
+  - SQL injection prevention via parameterized SQLAlchemy queries and Pydantic v2 input validation models.
+- **Robust Exception Handling & Resilient Retries**:
+  - Implement exponential backoff and circuit breakers (via `tenacity`) for external services (Google Gemini API, Supabase, Payment webhooks).
+
+### 2. 📊 Observability, Telemetry & Grafana Monitoring
+- **Prometheus & Grafana Dashboards**:
+  - Export system metrics: HTTP request latency (p50, p95, p99), requests per second (RPS), error rate (4xx/5xx), and database connection pool saturation.
+  - Track domain-specific KPIs: OCR processing latency, duplicate detection rate, Gemini token consumption per hour, and approval SLA turnaround times.
+- **Distributed Tracing (OpenTelemetry)**: Trace end-to-end user transactions across Frontend ➔ FastAPI ➔ Supabase ➔ Gemini API to pinpoint microsecond bottlenecks.
+- **Error Tracking & Alerting**: Real-time error monitoring with Sentry or Datadog, with PagerDuty alerts on elevated error spikes or failed payment disbursements.
+
+### 3. ⚡ High-Concurrency Architecture & Scaling to 100,000+ Users
+- **Asynchronous Processing Pipeline**:
+  - Offload heavy operations (Gemini Vision OCR extraction, multi-signal candidate similarity scoring, PDF export generation) to an asynchronous worker queue (Celery or ARQ backed by Redis / RabbitMQ).
+  - Web requests return an instant HTTP 202 Accepted with a job ID, allowing the UI to poll or receive updates via WebSockets/SSE.
+- **Database Scaling & Connection Pooling**:
+  - Deploy **PgBouncer** / Supabase Supavisor connection pooling to support tens of thousands of active client connections without exhausting database socket limits.
+  - Configure PostgreSQL **Read Replicas** to separate heavy analytical queries (Finance reports, category aggregations) from transactional writes (claim submissions, approvals).
+  - Implement **Table Partitioning**: Partition `claims` and `claim_status_history` tables by fiscal year or month to maintain sub-10ms index seek performance across millions of rows.
+
+### 4. 💰 FinOps & Cost Optimization
+- **Gemini API Token Optimization**:
+  - **Tiered Gating**: Never call Gemini LLM on clean claims; ensure Tier 1 & Tier 2 deterministic checks filter out 85%+ of duplicate-free claims at zero AI token cost.
+  - **Exact Hash Cache**: If an identical receipt SHA-256 hash was analyzed previously, retrieve cached OCR extraction and forensic reasoning directly from Redis/Postgres without re-prompting Gemini.
+  - **Model Sizing**: Utilize `gemini-2.5-flash` or `gemini-2.5-flash-lite` for high-throughput OCR and reserve high-reasoning models only for complex forensic edge cases.
+- **Infrastructure Cost Controls**: Auto-scale container instances (AWS ECS Fargate / Kubernetes KEDA) based on CPU/memory and queue depth, scaling down to minimum capacity during off-peak hours.
+
+### 5. 🛡️ Rate Limiting & Traffic Throttling
+- **Multi-Tier Rate Limiting (`slowapi` / Redis Token Bucket)**:
+  - **Per-IP Limits**: Max 100 requests/minute for unauthenticated endpoints to prevent DDoS and automated probing.
+  - **Per-User Limits**: Max 20 receipt uploads per hour per employee to curb spam submissions and prevent storage quota exhaustion.
+  - **AI Endpoint Throttling**: Strict burst and sustained concurrency caps on OCR and verification endpoints to prevent provider quota exhaustion and unexpected billing spikes.
+- **DDoS Mitigation**: Place the application behind Cloudflare or AWS CloudFront with Web Application Firewall (WAF) rules and automated bot detection.
+
+### 6. 🔐 Enterprise Authentication & Identity Access Management (IAM)
+- **Production Auth Migration**: Replace seeded mock users with enterprise **OAuth 2.0 / OIDC / SAML 2.0** Single Sign-On (SSO) integrated with Google Workspace, Microsoft Entra ID (Azure AD), or Okta.
+- **Stateless JWT Tokens**: Issue cryptographically signed, short-lived JWT access tokens with secure HTTP-only refresh cookies.
+- **Granular RBAC & ABAC**: Attribute-Based Access Control enforcing organizational hierarchy (e.g., managers can only access claims belonging to their direct reporting tree).
+
+### 7. 🧪 Automated Load & Stress Testing (1 to 100,000 Users)
+- **Load Testing with Locust & k6**:
+  - Design realistic load test scenarios simulating 1,000, 10,000, and 100,000 concurrent active users.
+  - Test sustained throughput, burst spikes (e.g., month-end expense filing rush), and verify p99 API latency stays under 300ms for core workflows.
+  - Chaos engineering tests to verify zero data loss during worker restarts or database failovers.
+
+### 8. 🏦 Live Banking & Corporate ERP Integrations
+- **Real Payment Gateways**: Connect `PaymentService` to production disbursement APIs (RazorpayX, Stripe Treasury, ICICI/HDFC Corporate Banking APIs) for instant real-time bank IMPS/NEFT transfers.
+- **ERP Accounting Sync**: Bi-directional automated synchronization of settled expense entries with SAP, Oracle NetSuite, QuickBooks, or Xero for real-time ledger balancing.
+
