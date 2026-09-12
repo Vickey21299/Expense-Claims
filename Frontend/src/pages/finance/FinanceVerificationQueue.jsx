@@ -137,60 +137,89 @@ export default function FinanceVerificationQueue() {
               <thead>
                 <tr>
                   <th>Employee</th>
-                  <th>Date</th>
-                  <th>Merchant</th>
+                  <th>Timeline</th>
+                  <th>Merchant & Ref</th>
                   <th>Category</th>
                   <th className="text-right">Amount</th>
-                  <th>Finance Status</th>
-                  <th>Claim Status</th>
-                  <th>Action</th>
+                  <th>Verification Status</th>
+                  <th>Audit Decision</th>
+                  <th className="text-right">Action</th>
                 </tr>
               </thead>
               <tbody>
-                {filtered.map((claim) => (
-                  <tr
-                    key={claim.id}
-                    className="claims-table__row"
-                    onClick={() => navigate(`/finance/claims/${claim.id}`)}
-                    role="button"
-                    tabIndex={0}
-                  >
-                    <td>
-                      <div className="claims-table__employee">
-                        <span className="employee-name">{claim.employee?.name || "—"}</span>
-                        <span className="claim-id">{claim.id}</span>
-                      </div>
-                    </td>
-                    <td className="claims-table__date">{formatDate(claim.date)}</td>
-                    <td className="claims-table__merchant">
-                      <span className="merchant-name">{claim.merchant}</span>
-                    </td>
-                    <td className="claims-table__category">{claim.category || "—"}</td>
-                    <td className="claims-table__amount text-right">
-                      {formatAmount(claim.amount, claim.currency)}
-                    </td>
-                    <td className="claims-table__status">
-                      <StatusBadge
-                        status={claim.financeStatus || (claim.status === "PAID" ? "PAID" : "FINANCE_PENDING")}
-                      />
-                    </td>
-                    <td className="claims-table__status">
-                      <StatusBadge status={claim.status} />
-                    </td>
-                    <td>
-                      <button
-                        id={`btn-review-${claim.id}`}
-                        className="btn btn--ghost btn--sm"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          navigate(`/finance/claims/${claim.id}`);
-                        }}
-                      >
-                        Audit
-                      </button>
-                    </td>
-                  </tr>
-                ))}
+                {filtered.map((claim) => {
+                  const empName = claim.employee?.name || "Employee";
+                  const initials = empName.split(" ").map((n) => n[0]).join("").slice(0, 2);
+
+                  return (
+                    <tr
+                      key={claim.id}
+                      className="claims-table__row"
+                      onClick={() => navigate(`/finance/claims/${claim.id}`)}
+                      role="button"
+                      tabIndex={0}
+                    >
+                      <td>
+                        <div className="employee-row">
+                          <div className="employee-avatar-sm" aria-hidden="true">
+                            {initials}
+                          </div>
+                          <div className="claims-table__employee">
+                            <span className="employee-name">{empName}</span>
+                            <span className="claim-id">{claim.employee?.department || "Engineering"}</span>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="claims-table__initiated">
+                        <div className="initiated-cell">
+                          <span className="initiated-date">{formatDate(claim.submittedAt || claim.createdAt || claim.date)}</span>
+                          <span className="initiated-time">Exp: {formatDate(claim.date)}</span>
+                        </div>
+                      </td>
+                      <td className="claims-table__merchant">
+                        <span className="merchant-name">{claim.merchant}</span>
+                        <span className="claim-id">{claim.claimRef || claim.claim_ref || claim.id}</span>
+                      </td>
+                      <td className="claims-table__category">{claim.category || "—"}</td>
+                      <td className="claims-table__amount text-right">
+                        {formatAmount(claim.amount, claim.currency)}
+                      </td>
+                      <td className="claims-table__status">
+                        <div style={{ display: "flex", flexDirection: "column", gap: "3px", alignItems: "flex-start" }}>
+                          <StatusBadge status={claim.status} />
+                          {claim.duplicate_risk_percentage != null && claim.duplicate_risk_percentage > 30 && (
+                            <span
+                              className={`claim-risk-pill ${
+                                claim.duplicate_risk_percentage >= 70
+                                  ? "claim-risk-pill--high"
+                                  : "claim-risk-pill--medium"
+                              }`}
+                            >
+                              {claim.duplicate_risk_percentage}% risk
+                            </span>
+                          )}
+                        </div>
+                      </td>
+                      <td className="claims-table__status">
+                        <StatusBadge
+                          status={claim.financeStatus || (claim.status === "PAID" ? "PAID" : "FINANCE_PENDING")}
+                        />
+                      </td>
+                      <td className="text-right">
+                        <button
+                          id={`btn-review-${claim.id}`}
+                          className="btn btn--ghost btn--sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            navigate(`/finance/claims/${claim.id}`);
+                          }}
+                        >
+                          Audit
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>

@@ -139,11 +139,16 @@ export default function FinanceReports() {
       </div>
 
       {/* Employee spend table */}
-      <div className="card" style={{ marginTop: "24px" }}>
-        <h2 className="card__title">Employee Reimbursement Breakdown</h2>
-        <div style={{ marginTop: "16px" }}>
-          <EmployeeSpendTable data={reportData?.employeeSpend || []} />
+      <div style={{ marginTop: "28px" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "14px" }}>
+          <div>
+            <h2 className="card__title" style={{ margin: 0 }}>Employee Reimbursement Breakdown</h2>
+            <p style={{ color: "var(--text-muted)", fontSize: "13px", marginTop: "2px" }}>
+              Total approved, disbursed, and pending payout amounts aggregated per employee
+            </p>
+          </div>
         </div>
+        <EmployeeSpendTable data={reportData?.employeeSpend || []} />
       </div>
     </div>
   );

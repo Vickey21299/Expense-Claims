@@ -133,43 +133,56 @@ export default function FinancePayments() {
                 <thead>
                   <tr>
                     <th>Employee</th>
-                    <th>Merchant</th>
+                    <th>Merchant & Ref</th>
                     <th>Category</th>
                     <th className="text-right">Amount</th>
-                    <th>Finance Note</th>
-                    <th>Action</th>
+                    <th>Finance Clearance Note</th>
+                    <th className="text-right">Action</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {readyToPay.map((claim) => (
-                    <tr key={claim.id} className="claims-table__row">
-                      <td>
-                        <div className="claims-table__employee">
-                          <span className="employee-name">{claim.employee?.name || "—"}</span>
-                          <span className="claim-id">{claim.id}</span>
-                        </div>
-                      </td>
-                      <td className="claims-table__merchant">
-                        <span className="merchant-name">{claim.merchant}</span>
-                      </td>
-                      <td className="claims-table__category">{claim.category}</td>
-                      <td className="claims-table__amount text-right">
-                        {formatAmount(claim.amount, claim.currency)}
-                      </td>
-                      <td style={{ fontSize: "13px", color: "var(--text-sm)" }}>
-                        {claim.financeVerification?.comment || "Cleared for payment"}
-                      </td>
-                      <td>
-                        <button
-                          id={`btn-pay-now-${claim.id}`}
-                          className="btn btn--primary btn--sm"
-                          onClick={() => handleOpenPaymentModal(claim)}
-                        >
-                          Process Payment
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
+                  {readyToPay.map((claim) => {
+                    const empName = claim.employee?.name || "Employee";
+                    const initials = empName.split(" ").map((n) => n[0]).join("").slice(0, 2);
+
+                    return (
+                      <tr key={claim.id} className="claims-table__row">
+                        <td>
+                          <div className="employee-row">
+                            <div className="employee-avatar-sm" aria-hidden="true">
+                              {initials}
+                            </div>
+                            <div className="claims-table__employee">
+                              <span className="employee-name">{empName}</span>
+                              <span className="claim-id">{claim.employee?.department || "Engineering"}</span>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="claims-table__merchant">
+                          <span className="merchant-name">{claim.merchant}</span>
+                          <span className="claim-id">{claim.claimRef || claim.claim_ref || claim.id}</span>
+                        </td>
+                        <td className="claims-table__category">{claim.category}</td>
+                        <td className="claims-table__amount text-right">
+                          {formatAmount(claim.amount, claim.currency)}
+                        </td>
+                        <td>
+                          <span style={{ fontSize: "13px", color: "var(--text)" }}>
+                            {claim.financeVerification?.comment || claim.reviewComment || "Cleared for reimbursement payout"}
+                          </span>
+                        </td>
+                        <td className="text-right">
+                          <button
+                            id={`btn-pay-now-${claim.id}`}
+                            className="btn btn--primary btn--sm"
+                            onClick={() => handleOpenPaymentModal(claim)}
+                          >
+                            Disburse Funds
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
@@ -185,34 +198,47 @@ export default function FinancePayments() {
                 <tr>
                   <th>Payment Ref</th>
                   <th>Employee</th>
-                  <th>Merchant</th>
-                  <th className="text-right">Amount</th>
-                  <th>Status</th>
+                  <th>Merchant & Ref</th>
+                  <th className="text-right">Amount Disbursed</th>
+                  <th>Settlement Status</th>
                 </tr>
               </thead>
               <tbody>
-                {paidClaims.map((claim) => (
-                  <tr key={claim.id} className="claims-table__row">
-                    <td style={{ fontFamily: "var(--mono)", fontSize: "13px", fontWeight: "600", color: "var(--accent)" }}>
-                      {claim.paymentReference || "PAY-ARCHIVED"}
-                    </td>
-                    <td>
-                      <div className="claims-table__employee">
-                        <span className="employee-name">{claim.employee?.name || "—"}</span>
-                        <span className="claim-id">{claim.id}</span>
-                      </div>
-                    </td>
-                    <td className="claims-table__merchant">
-                      <span className="merchant-name">{claim.merchant}</span>
-                    </td>
-                    <td className="claims-table__amount text-right">
-                      {formatAmount(claim.amount, claim.currency)}
-                    </td>
-                    <td className="claims-table__status">
-                      <StatusBadge status="PAID" />
-                    </td>
-                  </tr>
-                ))}
+                {paidClaims.map((claim) => {
+                  const empName = claim.employee?.name || "Employee";
+                  const initials = empName.split(" ").map((n) => n[0]).join("").slice(0, 2);
+
+                  return (
+                    <tr key={claim.id} className="claims-table__row">
+                      <td>
+                        <span style={{ fontFamily: "var(--mono)", fontSize: "12.5px", fontWeight: "600", color: "var(--accent)" }}>
+                          {claim.paymentReference || "PAY-ARCHIVED"}
+                        </span>
+                      </td>
+                      <td>
+                        <div className="employee-row">
+                          <div className="employee-avatar-sm" aria-hidden="true">
+                            {initials}
+                          </div>
+                          <div className="claims-table__employee">
+                            <span className="employee-name">{empName}</span>
+                            <span className="claim-id">{claim.employee?.department || "Engineering"}</span>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="claims-table__merchant">
+                        <span className="merchant-name">{claim.merchant}</span>
+                        <span className="claim-id">{claim.claimRef || claim.claim_ref || claim.id}</span>
+                      </td>
+                      <td className="claims-table__amount text-right text-success">
+                        {formatAmount(claim.amount, claim.currency)}
+                      </td>
+                      <td className="claims-table__status">
+                        <StatusBadge status="PAID" />
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>

@@ -650,6 +650,39 @@ input, textarea, select {
   font-size: 13px;
 }
 
+.claims-table__employee {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.employee-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.employee-avatar-sm {
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-full);
+  background: linear-gradient(135deg, var(--accent) 0%, #ec4899 100%);
+  color: white;
+  font-size: 11px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.employee-name {
+  font-weight: 600;
+  color: var(--text-h);
+  font-size: 14px;
+  white-space: nowrap;
+}
+
 .claims-table__amount {
   font-weight: 600;
   color: var(--text-h);
@@ -658,7 +691,66 @@ input, textarea, select {
 }
 
 .text-right { text-align: right; }
+.text-center { text-align: center; }
 .text-muted { color: var(--text-muted); }
+.text-success { color: #10b981; }
+.text-warning { color: #d97706; }
+.text-danger { color: #ef4444; }
+
+@media (prefers-color-scheme: dark) {
+  .text-success { color: #34d399; }
+  .text-warning { color: #fbbf24; }
+  .text-danger { color: #f87171; }
+}
+
+/* Claim duplicate risk badge for table cells */
+.claim-risk-pill {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 4px;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  letter-spacing: 0.2px;
+  white-space: nowrap;
+}
+
+.claim-risk-pill--high {
+  background: rgba(239, 68, 68, 0.12);
+  color: #dc2626;
+  border: 1px solid rgba(239, 68, 68, 0.25);
+}
+
+.claim-risk-pill--medium {
+  background: rgba(245, 158, 11, 0.12);
+  color: #b45309;
+  border: 1px solid rgba(245, 158, 11, 0.25);
+}
+
+.claim-risk-pill--low {
+  background: rgba(16, 185, 129, 0.12);
+  color: #059669;
+  border: 1px solid rgba(16, 185, 129, 0.25);
+}
+
+@media (prefers-color-scheme: dark) {
+  .claim-risk-pill--high {
+    background: rgba(239, 68, 68, 0.22);
+    color: #fca5a5;
+    border-color: rgba(239, 68, 68, 0.4);
+  }
+  .claim-risk-pill--medium {
+    background: rgba(245, 158, 11, 0.22);
+    color: #fcd34d;
+    border-color: rgba(245, 158, 11, 0.4);
+  }
+  .claim-risk-pill--low {
+    background: rgba(16, 185, 129, 0.22);
+    color: #6ee7b7;
+    border-color: rgba(16, 185, 129, 0.4);
+  }
+}
 
 .empty-state {
   padding: 48px 24px;
@@ -2230,9 +2322,67 @@ input, textarea, select {
   margin-top: 12px;
 }
 
-.report-chart__bar-bg {
-  height: 10px;
+.report-chart {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.report-chart__row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
   background: var(--surface-2);
+  border: 1px solid var(--border);
+  transition: all var(--transition);
+}
+
+.report-chart__row:hover {
+  border-color: var(--accent-border);
+  box-shadow: var(--shadow-sm);
+}
+
+.report-chart__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 13px;
+}
+
+.report-chart__cat {
+  font-weight: 600;
+  color: var(--text-h);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.report-chart__cat-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.report-chart__val {
+  font-family: var(--mono);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-h);
+}
+
+.report-chart__count {
+  color: var(--text-muted);
+  font-weight: 400;
+  font-size: 11.5px;
+  margin-left: 6px;
+}
+
+.report-chart__bar-bg {
+  height: 8px;
+  background: rgba(0, 0, 0, 0.06);
   border-radius: var(--radius-full);
   overflow: hidden;
 }
@@ -2240,14 +2390,14 @@ input, textarea, select {
 .report-chart__bar-fill {
   height: 100%;
   border-radius: var(--radius-full);
-  transition: width 0.4s ease;
+  transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .alert-box {
   display: flex;
   align-items: flex-start;
   gap: 10px;
-  padding: 12px;
+  padding: 14px 16px;
   border-radius: var(--radius);
 }
 
@@ -2261,6 +2411,55 @@ input, textarea, select {
   background: #eff6ff;
   border: 1px solid #bfdbfe;
   color: #1d4ed8;
+}
+
+/* Report Table Spend Share Bar */
+.spend-share-cell {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.spend-share-bar {
+  width: 70px;
+  height: 6px;
+  background: var(--surface-2);
+  border-radius: var(--radius-full);
+  overflow: hidden;
+  border: 1px solid var(--border);
+}
+
+.spend-share-fill {
+  height: 100%;
+  border-radius: var(--radius-full);
+  background: linear-gradient(90deg, #6366f1, #a855f7);
+}
+
+@media (prefers-color-scheme: dark) {
+  .report-chart__row {
+    background: rgba(255, 255, 255, 0.03);
+    border-color: var(--border-2);
+  }
+  .report-chart__bar-bg {
+    background: rgba(255, 255, 255, 0.08);
+  }
+  .alert-box--warning {
+    background: rgba(245, 158, 11, 0.12);
+    border-color: rgba(245, 158, 11, 0.35);
+    color: #fcd34d;
+  }
+  .alert-box--warning strong {
+    color: #fde68a;
+  }
+  .alert-box--info {
+    background: rgba(59, 130, 246, 0.12);
+    border-color: rgba(59, 130, 246, 0.35);
+    color: #93c5fd;
+  }
+  .alert-box--info strong {
+    color: #bfdbfe;
+  }
 }
 
 /* ── 34. AI Intelligence & Forensic Analysis Card ── */

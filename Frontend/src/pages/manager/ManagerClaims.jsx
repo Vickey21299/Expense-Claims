@@ -168,70 +168,72 @@ export default function ManagerClaims() {
                 </tr>
               </thead>
               <tbody>
-                {filtered.map((claim) => (
-                  <tr
-                    key={claim.id}
-                    className="claims-table__row"
-                    onClick={() => navigate(`/manager/claims/${claim.id}`)}
-                    role="button"
-                    tabIndex={0}
-                    aria-label={`Review claim from ${claim.employee?.name}`}
-                    onKeyDown={(e) => e.key === "Enter" && navigate(`/manager/claims/${claim.id}`)}
-                  >
-                    <td>
-                      <div className="claims-table__employee">
-                        <span className="employee-name">{claim.employee?.name || "Employee"}</span>
-                        <span className="claim-id">{claim.employee?.department || "Engineering"} · {claim.employee?.role || "Staff"}</span>
-                      </div>
-                    </td>
-                    <td className="claims-table__date">{formatDate(claim.submittedAt || claim.createdAt)}</td>
-                    <td className="claims-table__date">{formatDate(claim.date || claim.claim_date)}</td>
-                    <td>
-                      <div className="claims-table__merchant">
+                {filtered.map((claim) => {
+                  const empName = claim.employee?.name || "Employee";
+                  const initials = empName.split(" ").map((n) => n[0]).join("").slice(0, 2);
+
+                  return (
+                    <tr
+                      key={claim.id}
+                      className="claims-table__row"
+                      onClick={() => navigate(`/manager/claims/${claim.id}`)}
+                      role="button"
+                      tabIndex={0}
+                      aria-label={`Review claim from ${empName}`}
+                      onKeyDown={(e) => e.key === "Enter" && navigate(`/manager/claims/${claim.id}`)}
+                    >
+                      <td>
+                        <div className="employee-row">
+                          <div className="employee-avatar-sm" aria-hidden="true">
+                            {initials}
+                          </div>
+                          <div className="claims-table__employee">
+                            <span className="employee-name">{empName}</span>
+                            <span className="claim-id">{claim.employee?.department || "Engineering"} · {claim.employee?.role || "Staff"}</span>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="claims-table__date">{formatDate(claim.submittedAt || claim.createdAt)}</td>
+                      <td className="claims-table__date">{formatDate(claim.date || claim.claim_date)}</td>
+                      <td className="claims-table__merchant">
                         <span className="merchant-name">{claim.merchant}</span>
-                        <span className="claim-id">{claim.claimRef || claim.id}</span>
-                      </div>
-                    </td>
-                    <td className="claims-table__category">{claim.category || "—"}</td>
-                    <td className="claims-table__amount text-right">
-                      {formatAmount(claim.amount, claim.currency)}
-                    </td>
-                    <td className="claims-table__status">
-                      <div style={{ display: "flex", flexDirection: "column", gap: "4px", alignItems: "flex-start" }}>
-                        <StatusBadge status={claim.status} />
-                        {claim.duplicate_risk_percentage != null && claim.duplicate_risk_percentage > 30 && (
-                          <span
-                            style={{
-                              fontSize: "10px",
-                              fontWeight: 700,
-                              padding: "2px 6px",
-                              borderRadius: "4px",
-                              backgroundColor: claim.duplicate_risk_percentage >= 70 ? "rgba(239, 68, 68, 0.15)" : "rgba(245, 158, 11, 0.15)",
-                              color: claim.duplicate_risk_percentage >= 70 ? "#ef4444" : "#b45309",
-                              display: "inline-flex",
-                              alignItems: "center",
-                              gap: "3px",
-                            }}
-                          >
-                            <ShieldAlert size={11} />
-                            {claim.duplicate_risk_percentage}% risk
-                          </span>
-                        )}
-                      </div>
-                    </td>
-                    <td>
-                      <button
-                        className="btn btn--ghost btn--sm"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          navigate(`/manager/claims/${claim.id}`);
-                        }}
-                      >
-                        Review
-                      </button>
-                    </td>
-                  </tr>
-                ))}
+                        <span className="claim-id">{claim.claimRef || claim.claim_ref || claim.id}</span>
+                      </td>
+                      <td className="claims-table__category">{claim.category || "—"}</td>
+                      <td className="claims-table__amount text-right">
+                        {formatAmount(claim.amount, claim.currency)}
+                      </td>
+                      <td className="claims-table__status">
+                        <div style={{ display: "flex", flexDirection: "column", gap: "4px", alignItems: "flex-start" }}>
+                          <StatusBadge status={claim.status} />
+                          {claim.duplicate_risk_percentage != null && claim.duplicate_risk_percentage > 30 && (
+                            <span
+                              className={`claim-risk-pill ${
+                                claim.duplicate_risk_percentage >= 70
+                                  ? "claim-risk-pill--high"
+                                  : "claim-risk-pill--medium"
+                              }`}
+                            >
+                              <ShieldAlert size={11} />
+                              {claim.duplicate_risk_percentage}% risk
+                            </span>
+                          )}
+                        </div>
+                      </td>
+                      <td className="text-right">
+                        <button
+                          className="btn btn--ghost btn--sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            navigate(`/manager/claims/${claim.id}`);
+                          }}
+                        >
+                          Review
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
