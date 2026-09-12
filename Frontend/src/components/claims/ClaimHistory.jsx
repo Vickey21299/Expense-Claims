@@ -13,6 +13,8 @@ import {
   CheckCircle2,
   XCircle,
   Timer,
+  Bot,
+  Sparkles,
 } from "lucide-react";
 
 function formatTimestamp(ts) {
@@ -58,8 +60,8 @@ function getEventIcon(item) {
   if (toStatus === "APPROVED" || toStatus === "MANAGER_CONFIRMED" || ev.includes("manager")) {
     return <UserCheck size={15} className="text-blue-500" />;
   }
-  if (ev.includes("verification") || ev.includes("ocr")) {
-    return <ShieldCheck size={15} className="text-teal-500" />;
+  if (ev.includes("verification") || ev.includes("ocr") || ev.includes("flagged") || ev.includes("ai")) {
+    return <Bot size={15} color="#6366f1" />;
   }
   if (ev.includes("submit")) {
     return <Send size={15} className="text-amber-500" />;
@@ -107,18 +109,31 @@ export default function ClaimHistory({ history = [], claim = null }) {
             }
           }
 
-          const isManagerEvent =
-            item.toStatus === "APPROVED" ||
-            item.toStatus === "MANAGER_CONFIRMED" ||
-            (item.event || "").toLowerCase().includes("manager");
-
-          const isFinanceEvent =
-            item.toStatus === "READY_FOR_PAYMENT" ||
-            item.toStatus === "PAID" ||
-            (item.event || "").toLowerCase().includes("finance");
-
           const isRejectEvent =
             item.toStatus === "REJECTED" || (item.event || "").toLowerCase().includes("reject");
+
+          const isFinanceEvent =
+            !isRejectEvent &&
+            (item.toStatus === "READY_FOR_PAYMENT" ||
+              item.toStatus === "PAID" ||
+              (item.event || "").toLowerCase().includes("finance"));
+
+          const isManagerEvent =
+            !isRejectEvent &&
+            !isFinanceEvent &&
+            (item.toStatus === "APPROVED" ||
+              item.toStatus === "MANAGER_CONFIRMED" ||
+              (item.event || "").toLowerCase().includes("manager"));
+
+          const isAiEvent =
+            !isRejectEvent &&
+            !isFinanceEvent &&
+            !isManagerEvent &&
+            ((item.event || "").toLowerCase().includes("verification") ||
+              (item.event || "").toLowerCase().includes("flagged") ||
+              (item.event || "").toLowerCase().includes("ai") ||
+              (item.comment || "").toLowerCase().startsWith("automation alert") ||
+              (item.comment || "").toLowerCase().includes("deterministic"));
 
           return (
             <li
@@ -162,7 +177,7 @@ export default function ClaimHistory({ history = [], claim = null }) {
                   )}
                 </div>
 
-                {/* Manager / Finance / Rejection Comment Box */}
+                {/* Manager / Finance / Rejection / AI Automation Comment Box */}
                 {item.comment && (
                   <div
                     className={`history-comment-box ${
@@ -172,11 +187,17 @@ export default function ClaimHistory({ history = [], claim = null }) {
                         ? "history-comment-box--finance"
                         : isManagerEvent
                         ? "history-comment-box--manager"
+                        : isAiEvent
+                        ? "history-comment-box--ai"
                         : ""
                     }`}
                   >
                     <div className="history-comment-header">
-                      <MessageSquareQuote size={14} />
+                      {isAiEvent ? (
+                        <Bot size={14} color="#6366f1" />
+                      ) : (
+                        <MessageSquareQuote size={14} />
+                      )}
                       <span>
                         {isRejectEvent
                           ? "Rejection Reason"
@@ -184,6 +205,8 @@ export default function ClaimHistory({ history = [], claim = null }) {
                           ? "Finance Verification Note"
                           : isManagerEvent
                           ? "Manager Approval Justification"
+                          : isAiEvent
+                          ? "AI Automation & Verification Intelligence"
                           : "Audit Note"}
                       </span>
                     </div>

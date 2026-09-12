@@ -3,7 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import {
   ArrowLeft, User, Calendar, Tag, FileText, DollarSign,
   Building2, CheckCircle2, XCircle, ShieldAlert, ShieldCheck,
-  AlertTriangle, Bot, Layers, Check,
+  AlertTriangle, Bot, Layers, Check, Sparkles,
 } from "lucide-react";
 import StatusBadge from "../../components/common/StatusBadge";
 import ClaimHistory from "../../components/claims/ClaimHistory";
@@ -241,22 +241,21 @@ export default function ManagerClaimReview() {
 
           {/* AI Forensic Intelligence Card */}
           {(llm || isFlagged || candidates.length > 0) && (
-            <div className="card" style={{ border: isFlagged ? "1px solid rgba(245, 158, 11, 0.4)" : "1px solid var(--border)" }}>
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "12px" }}>
-                <h2 className="card__title" style={{ display: "flex", alignItems: "center", gap: "8px", margin: 0 }}>
-                  <Bot size={18} color="var(--primary, #3b82f6)" />
+            <div className={`card ai-intelligence-card ${isFlagged ? "ai-intelligence-card--flagged" : ""}`}>
+              <div className="ai-intelligence-card__header">
+                <h2 className="ai-intelligence-card__title">
+                  <Bot size={19} color="#6366f1" />
                   AI Verification & Forensic Analysis
                 </h2>
                 {claim.risk_classification && (
                   <span
-                    style={{
-                      padding: "4px 8px",
-                      borderRadius: "6px",
-                      fontSize: "12px",
-                      fontWeight: 700,
-                      backgroundColor: claim.duplicate_risk_percentage >= 70 ? "rgba(239, 68, 68, 0.15)" : "rgba(245, 158, 11, 0.15)",
-                      color: claim.duplicate_risk_percentage >= 70 ? "#ef4444" : "#f59e0b",
-                    }}
+                    className={`ai-risk-badge ${
+                      claim.duplicate_risk_percentage >= 70
+                        ? "ai-risk-badge--high"
+                        : claim.duplicate_risk_percentage >= 40
+                        ? "ai-risk-badge--medium"
+                        : "ai-risk-badge--low"
+                    }`}
                   >
                     {claim.risk_classification} ({claim.duplicate_risk_percentage}% duplicate risk)
                   </span>
@@ -264,22 +263,25 @@ export default function ManagerClaimReview() {
               </div>
 
               {llm?.manager_recommendation && (
-                <div style={{ padding: "12px", borderRadius: "8px", backgroundColor: "rgba(59, 130, 246, 0.08)", marginBottom: "12px", borderLeft: "3px solid #3b82f6" }}>
-                  <p style={{ fontWeight: 600, fontSize: "13px", color: "#1d4ed8", margin: "0 0 4px 0" }}>
-                    Automated Recommendation:
-                  </p>
-                  <p style={{ fontSize: "13px", color: "var(--foreground, #1e293b)", margin: 0, lineHeight: 1.5 }}>
+                <div className="ai-recommendation-box">
+                  <div className="ai-recommendation-box__header">
+                    <Sparkles size={14} color="#6366f1" />
+                    <span className="ai-recommendation-box__title">
+                      Automated Recommendation
+                    </span>
+                  </div>
+                  <p className="ai-recommendation-box__text">
                     {llm.manager_recommendation}
                   </p>
                 </div>
               )}
 
               {llm?.reasoning && (
-                <div style={{ marginBottom: "12px" }}>
-                  <p style={{ fontSize: "12px", fontWeight: 600, color: "var(--muted, #64748b)", margin: "0 0 4px 0" }}>
-                    Forensic Reasoning:
-                  </p>
-                  <p style={{ fontSize: "13px", color: "var(--foreground, #334155)", margin: 0, lineHeight: 1.5 }}>
+                <div className="ai-reasoning-box">
+                  <div className="ai-reasoning-box__label">
+                    Forensic Reasoning
+                  </div>
+                  <p className="ai-reasoning-box__text">
                     {llm.reasoning}
                   </p>
                 </div>
@@ -287,37 +289,28 @@ export default function ManagerClaimReview() {
 
               {/* Matched Candidates List */}
               {candidates.length > 0 && (
-                <div style={{ marginTop: "12px", borderTop: "1px solid var(--border)", paddingTop: "12px" }}>
-                  <p style={{ fontSize: "12px", fontWeight: 600, color: "var(--muted, #64748b)", margin: "0 0 8px 0" }}>
-                    Matched Historical Claims:
-                  </p>
-                  <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                <div className="ai-candidates-section">
+                  <div className="ai-candidates-title">
+                    Matched Historical Claims ({candidates.length})
+                  </div>
+                  <div>
                     {candidates.map((cand, idx) => (
-                      <div
-                        key={idx}
-                        style={{
-                          padding: "10px",
-                          borderRadius: "6px",
-                          backgroundColor: "rgba(0,0,0,0.02)",
-                          border: "1px solid var(--border)",
-                          fontSize: "12px",
-                        }}
-                      >
-                        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "4px" }}>
-                          <span style={{ fontWeight: 600 }}>{cand.claim_ref || "Claim"} · {cand.merchant_name}</span>
-                          <span style={{ fontWeight: 600, color: "#f59e0b" }}>
+                      <div key={idx} className="ai-candidate-card">
+                        <div className="ai-candidate-header">
+                          <span className="ai-candidate-ref">{cand.claim_ref || "Claim"} · {cand.merchant_name}</span>
+                          <span className="ai-candidate-score">
                             {Math.round((cand.similarity_score || 0) * 100)}% match
                           </span>
                         </div>
-                        <div style={{ display: "flex", gap: "12px", color: "var(--muted, #64748b)", marginBottom: "4px" }}>
+                        <div className="ai-candidate-meta">
                           <span>Amount: {formatAmount(cand.amount)}</span>
                           <span>Date: {formatDate(cand.expense_date)}</span>
                           <span>{cand.is_same_employee ? "Same employee" : "Different employee"}</span>
                         </div>
                         {cand.match_reasons && cand.match_reasons.length > 0 && (
-                          <div style={{ display: "flex", flexWrap: "wrap", gap: "4px", marginTop: "4px" }}>
+                          <div className="ai-candidate-tags">
                             {cand.match_reasons.map((r, rIdx) => (
-                              <span key={rIdx} style={{ fontSize: "11px", padding: "2px 6px", borderRadius: "4px", backgroundColor: "rgba(245, 158, 11, 0.1)", color: "#b45309" }}>
+                              <span key={rIdx} className="ai-candidate-tag">
                                 {r}
                               </span>
                             ))}

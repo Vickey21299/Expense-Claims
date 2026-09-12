@@ -14,6 +14,8 @@ import {
   XCircle,
   ShieldCheck,
   CreditCard,
+  Bot,
+  Sparkles,
 } from "lucide-react";
 import StatusBadge from "../../components/common/StatusBadge";
 import ClaimHistory from "../../components/claims/ClaimHistory";
@@ -230,6 +232,91 @@ export default function FinanceClaimReview() {
           {claim.verification && claim.verification.length > 0 && (
             <div className="card">
               <VerificationChecks checks={claim.verification} />
+            </div>
+          )}
+
+          {/* AI Forensic Intelligence Card */}
+          {(claim.llm_analysis || claim.duplicate_risk_percentage || (claim.matched_candidates && claim.matched_candidates.length > 0)) && (
+            <div className={`card ai-intelligence-card ${claim.duplicate_risk_percentage >= 40 ? "ai-intelligence-card--flagged" : ""}`}>
+              <div className="ai-intelligence-card__header">
+                <h2 className="ai-intelligence-card__title">
+                  <Bot size={19} color="#6366f1" />
+                  AI Verification & Forensic Analysis
+                </h2>
+                {claim.risk_classification && (
+                  <span
+                    className={`ai-risk-badge ${
+                      claim.duplicate_risk_percentage >= 70
+                        ? "ai-risk-badge--high"
+                        : claim.duplicate_risk_percentage >= 40
+                        ? "ai-risk-badge--medium"
+                        : "ai-risk-badge--low"
+                    }`}
+                  >
+                    {claim.risk_classification} ({claim.duplicate_risk_percentage}% duplicate risk)
+                  </span>
+                )}
+              </div>
+
+              {(claim.manager_recommendation || claim.llm_analysis?.manager_recommendation) && (
+                <div className="ai-recommendation-box">
+                  <div className="ai-recommendation-box__header">
+                    <Sparkles size={14} color="#6366f1" />
+                    <span className="ai-recommendation-box__title">
+                      Automated Recommendation
+                    </span>
+                  </div>
+                  <p className="ai-recommendation-box__text">
+                    {claim.manager_recommendation || claim.llm_analysis?.manager_recommendation}
+                  </p>
+                </div>
+              )}
+
+              {claim.llm_analysis?.reasoning && (
+                <div className="ai-reasoning-box">
+                  <div className="ai-reasoning-box__label">
+                    Forensic Reasoning
+                  </div>
+                  <p className="ai-reasoning-box__text">
+                    {claim.llm_analysis.reasoning}
+                  </p>
+                </div>
+              )}
+
+              {/* Matched Candidates */}
+              {claim.matched_candidates && claim.matched_candidates.length > 0 && (
+                <div className="ai-candidates-section">
+                  <div className="ai-candidates-title">
+                    Matched Historical Claims ({claim.matched_candidates.length})
+                  </div>
+                  <div>
+                    {claim.matched_candidates.map((cand, idx) => (
+                      <div key={idx} className="ai-candidate-card">
+                        <div className="ai-candidate-header">
+                          <span className="ai-candidate-ref">{cand.claim_ref || "Claim"} · {cand.merchant_name}</span>
+                          <span className="ai-candidate-score">
+                            {Math.round((cand.similarity_score || 0) * 100)}% match
+                          </span>
+                        </div>
+                        <div className="ai-candidate-meta">
+                          <span>Amount: ₹{cand.amount?.toLocaleString("en-IN")}</span>
+                          <span>Date: {cand.expense_date}</span>
+                          <span>{cand.is_same_employee ? "Same employee" : "Different employee"}</span>
+                        </div>
+                        {cand.match_reasons && cand.match_reasons.length > 0 && (
+                          <div className="ai-candidate-tags">
+                            {cand.match_reasons.map((r, rIdx) => (
+                              <span key={rIdx} className="ai-candidate-tag">
+                                {r}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           )}
 

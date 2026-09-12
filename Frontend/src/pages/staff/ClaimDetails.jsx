@@ -3,7 +3,7 @@
 
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, User, Calendar, Tag, FileText, DollarSign, Building2, Clock } from "lucide-react";
+import { ArrowLeft, User, Calendar, Tag, FileText, DollarSign, Building2, Clock, Bot, Sparkles } from "lucide-react";
 import StatusBadge from "../../components/common/StatusBadge";
 import ClaimHistory from "../../components/claims/ClaimHistory";
 import ReceiptPreview from "../../components/claims/ReceiptPreview";
@@ -188,6 +188,17 @@ export default function ClaimDetails() {
                   <p style={{ fontSize: "13px", color: "var(--text-h)", background: "var(--surface-2)", padding: "10px", borderRadius: "6px", margin: "4px 0 0" }}>
                     {claim.verificationResults[0].message || "Claim passed deterministic verification checks."}
                   </p>
+                )}
+                {(claim.manager_recommendation || claim.latestVerification?.explanation) && (
+                  <div className="history-comment-box history-comment-box--ai" style={{ marginTop: "8px" }}>
+                    <div className="history-comment-header">
+                      <Bot size={14} color="#6366f1" />
+                      <span>AI Automation & Verification Intelligence</span>
+                    </div>
+                    <p className="history-comment-text">
+                      "{claim.manager_recommendation || claim.latestVerification?.explanation}"
+                    </p>
+                  </div>
                 )}
               </div>
             </div>

@@ -1009,11 +1009,62 @@ input, textarea, select {
   color: #dc2626;
 }
 
+.history-comment-box--ai {
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.08) 0%, rgba(139, 92, 246, 0.05) 100%);
+  border-color: rgba(99, 102, 241, 0.28);
+  border-left: 3px solid #6366f1;
+}
+.history-comment-box--ai .history-comment-header {
+  color: #4f46e5;
+}
+
 .history-comment-text {
   font-style: italic;
   color: var(--text-h);
   line-height: 1.45;
   margin: 0;
+}
+
+@media (prefers-color-scheme: dark) {
+  .history-comment-box {
+    background: var(--surface-2);
+    border-color: var(--border-2);
+  }
+  .history-comment-box--manager {
+    background: rgba(59, 130, 246, 0.12);
+    border-color: rgba(96, 165, 250, 0.3);
+    border-left: 3px solid #3b82f6;
+  }
+  .history-comment-box--manager .history-comment-header {
+    color: #60a5fa;
+  }
+  .history-comment-box--finance {
+    background: rgba(168, 85, 247, 0.12);
+    border-color: rgba(192, 132, 252, 0.3);
+    border-left: 3px solid #a855f7;
+  }
+  .history-comment-box--finance .history-comment-header {
+    color: #c084fc;
+  }
+  .history-comment-box--reject {
+    background: rgba(239, 68, 68, 0.12);
+    border-color: rgba(248, 113, 113, 0.3);
+    border-left: 3px solid #ef4444;
+  }
+  .history-comment-box--reject .history-comment-header {
+    color: #f87171;
+  }
+  .history-comment-box--ai {
+    background: linear-gradient(135deg, rgba(99, 102, 241, 0.18) 0%, rgba(139, 92, 246, 0.14) 100%);
+    border-color: rgba(129, 140, 248, 0.4);
+    border-left: 3px solid #818cf8;
+  }
+  .history-comment-box--ai .history-comment-header {
+    color: #a5b4fc;
+  }
+  .history-comment-text {
+    color: #f1f5f9;
+  }
 }
 
 /* ── 18. Receipt Preview ── */
@@ -2210,5 +2261,255 @@ input, textarea, select {
   background: #eff6ff;
   border: 1px solid #bfdbfe;
   color: #1d4ed8;
+}
+
+/* ── 34. AI Intelligence & Forensic Analysis Card ── */
+.ai-intelligence-card {
+  position: relative;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
+  padding: 18px 20px;
+  margin-bottom: 20px;
+}
+
+.ai-intelligence-card--flagged {
+  border-color: rgba(245, 158, 11, 0.45);
+  box-shadow: 0 0 0 1px rgba(245, 158, 11, 0.15);
+}
+
+.ai-intelligence-card__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+  gap: 12px;
+}
+
+.ai-intelligence-card__title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-h);
+  margin: 0;
+}
+
+.ai-risk-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  border-radius: 9999px;
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+}
+
+.ai-risk-badge--high {
+  background: rgba(239, 68, 68, 0.12);
+  color: #dc2626;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+.ai-risk-badge--medium {
+  background: rgba(245, 158, 11, 0.12);
+  color: #d97706;
+  border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+.ai-risk-badge--low {
+  background: rgba(16, 185, 129, 0.12);
+  color: #059669;
+  border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+/* AI Recommendation Box — High Contrast & Clear */
+.ai-recommendation-box {
+  padding: 14px 16px;
+  border-radius: var(--radius-sm);
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.08) 0%, rgba(139, 92, 246, 0.04) 100%);
+  border: 1px solid rgba(99, 102, 241, 0.25);
+  border-left: 4px solid #6366f1;
+  margin-bottom: 14px;
+}
+
+.ai-recommendation-box__header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+
+.ai-recommendation-box__title {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: #4338ca;
+  margin: 0;
+}
+
+.ai-recommendation-box__text {
+  font-size: 13.5px;
+  line-height: 1.55;
+  color: var(--text-h);
+  margin: 0;
+  font-weight: 500;
+}
+
+/* AI Reasoning Box */
+.ai-reasoning-box {
+  padding: 12px 14px;
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  margin-bottom: 14px;
+}
+
+.ai-reasoning-box__label {
+  font-size: 11.5px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-sm);
+  margin-bottom: 4px;
+}
+
+.ai-reasoning-box__text {
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text-h);
+  margin: 0;
+}
+
+/* Candidate matches */
+.ai-candidates-section {
+  margin-top: 14px;
+  border-top: 1px solid var(--border);
+  padding-top: 14px;
+}
+
+.ai-candidates-title {
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-sm);
+  margin-bottom: 8px;
+}
+
+.ai-candidate-card {
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  margin-bottom: 8px;
+  font-size: 12px;
+}
+
+.ai-candidate-card:last-child {
+  margin-bottom: 0;
+}
+
+.ai-candidate-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 4px;
+}
+
+.ai-candidate-ref {
+  font-weight: 600;
+  color: var(--text-h);
+}
+
+.ai-candidate-score {
+  font-weight: 700;
+  color: #d97706;
+}
+
+.ai-candidate-meta {
+  display: flex;
+  gap: 12px;
+  color: var(--text-sm);
+  margin-bottom: 6px;
+}
+
+.ai-candidate-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.ai-candidate-tag {
+  font-size: 11px;
+  padding: 2px 7px;
+  border-radius: 4px;
+  background: rgba(245, 158, 11, 0.12);
+  color: #b45309;
+  border: 1px solid rgba(245, 158, 11, 0.2);
+}
+
+@media (prefers-color-scheme: dark) {
+  .ai-intelligence-card--flagged {
+    border-color: rgba(245, 158, 11, 0.55);
+    box-shadow: 0 0 0 1px rgba(245, 158, 11, 0.25);
+  }
+  .ai-risk-badge--high {
+    background: rgba(239, 68, 68, 0.25);
+    color: #fca5a5;
+    border-color: rgba(239, 68, 68, 0.5);
+  }
+  .ai-risk-badge--medium {
+    background: rgba(245, 158, 11, 0.25);
+    color: #fcd34d;
+    border-color: rgba(245, 158, 11, 0.5);
+  }
+  .ai-risk-badge--low {
+    background: rgba(16, 185, 129, 0.25);
+    color: #6ee7b7;
+    border-color: rgba(16, 185, 129, 0.5);
+  }
+  .ai-recommendation-box {
+    background: linear-gradient(135deg, rgba(99, 102, 241, 0.2) 0%, rgba(139, 92, 246, 0.14) 100%);
+    border-color: rgba(129, 140, 248, 0.45);
+    border-left-color: #818cf8;
+  }
+  .ai-recommendation-box__title {
+    color: #a5b4fc;
+  }
+  .ai-recommendation-box__text {
+    color: #f8fafc;
+  }
+  .ai-reasoning-box {
+    background: rgba(255, 255, 255, 0.04);
+    border-color: var(--border-2);
+  }
+  .ai-reasoning-box__text {
+    color: #f1f5f9;
+  }
+  .ai-candidate-card {
+    background: rgba(255, 255, 255, 0.03);
+    border-color: var(--border-2);
+  }
+  .ai-candidate-score {
+    color: #fbbf24;
+  }
+  .ai-candidate-tag {
+    background: rgba(245, 158, 11, 0.2);
+    color: #fde68a;
+    border-color: rgba(245, 158, 11, 0.35);
+  }
+  .duplicate-alert {
+    background: rgba(245, 158, 11, 0.08);
+    border-color: rgba(245, 158, 11, 0.35);
+  }
+  .duplicate-alert__header { color: #f59e0b; }
+  .duplicate-alert__assessment { color: #f59e0b; }
+  .duplicate-alert__desc { color: #e2e8f0; }
+  .duplicate-alert__signals li { color: #cbd5e1; }
 }
 
